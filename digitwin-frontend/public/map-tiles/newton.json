@@ -1,0 +1,25 @@
+{
+  "id": "newton",
+  "name": "Newton",
+  "bounds": [
+    [
+      1.305,
+      103.83
+    ],
+    [
+      1.325,
+      103.85
+    ]
+  ],
+  "zoom": 15,
+  "tileRange": {
+    "minX": 25834,
+    "minY": 16263,
+    "maxX": 25836,
+    "maxY": 16265
+  },
+  "imageSize": {
+    "width": 768,
+    "height": 768
+  }
+}

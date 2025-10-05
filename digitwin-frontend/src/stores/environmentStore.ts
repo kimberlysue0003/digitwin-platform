@@ -13,11 +13,13 @@ interface EnvironmentStore {
   activeLayer: VisualizationLayer;
   viewMode: ViewMode;
   selectedRegion: Region;
+  selectedPlanningArea: string; // ID of selected planning area
   updateData: (data: EnvironmentData) => void;
   setConnected: (connected: boolean) => void;
   setActiveLayer: (layer: VisualizationLayer) => void;
   setViewMode: (mode: ViewMode) => void;
   setSelectedRegion: (region: Region) => void;
+  setSelectedPlanningArea: (areaId: string) => void;
 }
 
 export const useEnvironmentStore = create<EnvironmentStore>((set) => ({
@@ -27,6 +29,7 @@ export const useEnvironmentStore = create<EnvironmentStore>((set) => ({
   activeLayer: null,
   viewMode: '2d',
   selectedRegion: 'central',
+  selectedPlanningArea: 'downtown-core',
   updateData: (data) =>
     set({
       data,
@@ -36,4 +39,5 @@ export const useEnvironmentStore = create<EnvironmentStore>((set) => ({
   setActiveLayer: (layer) => set({ activeLayer: layer }),
   setViewMode: (mode) => set({ viewMode: mode }),
   setSelectedRegion: (region) => set({ selectedRegion: region }),
+  setSelectedPlanningArea: (areaId) => set({ selectedPlanningArea: areaId }),
 }));

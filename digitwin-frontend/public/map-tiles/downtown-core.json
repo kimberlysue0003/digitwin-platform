@@ -1,0 +1,25 @@
+{
+  "id": "downtown-core",
+  "name": "Downtown Core",
+  "bounds": [
+    [
+      1.265,
+      103.835
+    ],
+    [
+      1.295,
+      103.865
+    ]
+  ],
+  "zoom": 15,
+  "tileRange": {
+    "minX": 25835,
+    "minY": 16266,
+    "maxX": 25838,
+    "maxY": 16268
+  },
+  "imageSize": {
+    "width": 1024,
+    "height": 768
+  }
+}

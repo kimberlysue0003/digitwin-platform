@@ -3,10 +3,10 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { useEnvironmentStore } from '../../stores/environmentStore';
 import { TemperatureLayer } from './TemperatureLayer';
-import { WindLayer } from './WindLayer';
 import { AirQualityLayer } from './AirQualityLayer';
 import { RainfallLayer } from './RainfallLayer';
 import { BuildingsLayer } from './BuildingsLayer';
+import { GroundOverlay } from './GroundOverlay';
 
 export function CityScene() {
   const { activeLayer } = useEnvironmentStore();
@@ -21,34 +21,55 @@ export function CityScene() {
         }}
         shadows
       >
-        {/* Background color */}
-        <color attach="background" args={['#87CEEB']} />
+        {/* Background color - realistic sky gradient */}
+        <color attach="background" args={['#a0d8f0']} />
+        <fog attach="fog" args={['#b8d8e8', 5000, 15000]} />
 
-        {/* Lighting */}
-        <ambientLight intensity={0.6} />
+        {/* Lighting - multi-light setup for realism */}
+        <ambientLight intensity={0.4} color="#b8d4e8" />
+
+        {/* Main sun light */}
         <directionalLight
-          position={[1000, 2000, 500]}
-          intensity={1.2}
+          position={[3000, 4000, 2000]}
+          intensity={1.8}
+          color="#ffffeb"
           castShadow
-          shadow-mapSize={[2048, 2048]}
+          shadow-mapSize={[4096, 4096]}
+          shadow-camera-left={-2000}
+          shadow-camera-right={2000}
+          shadow-camera-top={2000}
+          shadow-camera-bottom={-2000}
+          shadow-camera-near={0.5}
+          shadow-camera-far={10000}
+          shadow-bias={-0.0001}
         />
 
-        {/* Ground plane - clean gray */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
-          <planeGeometry args={[20000, 20000]} />
-          <meshStandardMaterial color="#e5e7eb" />
-        </mesh>
+        {/* Fill light from opposite side */}
+        <directionalLight
+          position={[-2000, 3000, -1000]}
+          intensity={0.5}
+          color="#c8d8f0"
+        />
 
-        {/* Grid helper for reference */}
-        <gridHelper args={[10000, 50, '#9ca3af', '#d1d5db']} position={[0, 0.5, 0]} />
+        {/* Rim light for edges */}
+        <directionalLight
+          position={[0, 2000, -3000]}
+          intensity={0.3}
+          color="#f0e8d8"
+        />
 
-        {/* Real buildings from OpenStreetMap */}
+        {/* Hemisphere light for sky/ground ambient */}
+        <hemisphereLight
+          args={['#87CEEB', '#e5e7eb', 0.6]}
+          position={[0, 1000, 0]}
+        />
+
+        {/* Buildings */}
         <BuildingsLayer />
 
-        {/* Visualization layers */}
+        {/* Visualization layers - moved to BuildingsLayer for better integration */}
         {activeLayer === 'temperature' && <TemperatureLayer />}
-        {activeLayer === 'wind' && <WindLayer />}
-        {activeLayer === 'airQuality' && <AirQualityLayer />}
+        {/* AirQuality now uses particles in BuildingsLayer */}
         {activeLayer === 'rainfall' && <RainfallLayer />}
 
         {/* Camera controls */}

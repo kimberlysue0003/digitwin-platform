@@ -20,8 +20,8 @@ function FitBounds() {
 }
 
 export function MapView() {
-  const { setViewMode, setSelectedRegion, activeLayer } = useEnvironmentStore();
-  const [selectedPlanningArea, setSelectedPlanningArea] = useState<string | null>(null);
+  const { setViewMode, setSelectedRegion, setSelectedPlanningArea, activeLayer } = useEnvironmentStore();
+  const [localSelectedArea, setLocalSelectedArea] = useState<string | null>(null);
   const [hoveredArea, setHoveredArea] = useState<string | null>(null);
   const [geoData, setGeoData] = useState<any>(null);
 
@@ -32,9 +32,14 @@ export function MapView() {
     });
   }, []);
 
-  const handleAreaClick = (areaName: string, region: string) => {
-    setSelectedPlanningArea(areaName);
+  const handleAreaClick = (areaName: string, region: string, areaId?: string) => {
+    setLocalSelectedArea(areaName);
     setSelectedRegion(region as any);
+
+    // Set planning area ID (convert name to ID if not provided)
+    const planningAreaId = areaId || areaName.toLowerCase().replace(/\s+/g, '-');
+    setSelectedPlanningArea(planningAreaId);
+
     // Wait a moment before switching to 3D view
     setTimeout(() => {
       setViewMode('3d');
@@ -70,7 +75,7 @@ export function MapView() {
             const region = feature?.properties?.region;
             const mainRegion = MAIN_REGIONS.find(r => r.id === region);
             const isHovered = hoveredArea === feature?.properties?.name;
-            const isSelected = selectedPlanningArea === feature?.properties?.name;
+            const isSelected = localSelectedArea === feature?.properties?.name;
 
             return {
               color: mainRegion?.color || '#666',
@@ -81,10 +86,11 @@ export function MapView() {
           }}
           onEachFeature={(feature, layer) => {
             const areaName = feature.properties?.name;
+            const areaId = feature.properties?.id;
             const region = feature.properties?.region;
 
             layer.on({
-              click: () => handleAreaClick(areaName, region),
+              click: () => handleAreaClick(areaName, region, areaId),
               mouseover: () => setHoveredArea(areaName),
               mouseout: () => setHoveredArea(null),
             });

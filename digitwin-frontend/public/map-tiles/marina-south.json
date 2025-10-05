@@ -1,0 +1,25 @@
+{
+  "id": "marina-south",
+  "name": "Marina South",
+  "bounds": [
+    [
+      1.25,
+      103.85
+    ],
+    [
+      1.28,
+      103.88
+    ]
+  ],
+  "zoom": 15,
+  "tileRange": {
+    "minX": 25836,
+    "minY": 16267,
+    "maxX": 25839,
+    "maxY": 16270
+  },
+  "imageSize": {
+    "width": 1024,
+    "height": 1024
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "orchard",
+  "name": "Orchard",
+  "bounds": [
+    [
+      1.295,
+      103.82
+    ],
+    [
+      1.315,
+      103.845
+    ]
+  ],
+  "zoom": 15,
+  "tileRange": {
+    "minX": 25833,
+    "minY": 16264,
+    "maxX": 25836,
+    "maxY": 16266
+  },
+  "imageSize": {
+    "width": 1024,
+    "height": 768
+  }
+}

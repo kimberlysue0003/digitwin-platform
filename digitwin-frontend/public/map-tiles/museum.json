@@ -1,0 +1,25 @@
+{
+  "id": "museum",
+  "name": "Museum",
+  "bounds": [
+    [
+      1.285,
+      103.84
+    ],
+    [
+      1.31,
+      103.86
+    ]
+  ],
+  "zoom": 15,
+  "tileRange": {
+    "minX": 25835,
+    "minY": 16264,
+    "maxX": 25837,
+    "maxY": 16267
+  },
+  "imageSize": {
+    "width": 768,
+    "height": 1024
+  }
+}
