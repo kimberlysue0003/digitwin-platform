@@ -568,53 +568,145 @@ export function DataOverlays({ layer, geoData, onAreaClick }: DataOverlaysProps)
     );
   }
 
-  // Rainfall overlay
+  // Rainfall overlay with animated droplets
   if (layer === 'rainfall' && data.rainfall?.readings && data.rainfall?.stations) {
-    const rainfallData = data.rainfall.readings.filter(r => r.value > 0);
+    // Get rainfall color based on amount
+    const getRainfallColor = (rainfall: number) => {
+      if (rainfall === 0) return '#e0e0e0'; // Gray for no rain
+      if (rainfall < 2) return '#bae6fd';   // Light blue
+      if (rainfall < 5) return '#7dd3fc';   // Medium blue
+      if (rainfall < 10) return '#38bdf8';  // Blue
+      if (rainfall < 20) return '#0ea5e9';  // Deep blue
+      return '#0369a1';                      // Dark blue
+    };
+
+    const getRainfallLabel = (rainfall: number) => {
+      if (rainfall === 0) return 'No Rain';
+      if (rainfall < 2) return 'Light';
+      if (rainfall < 5) return 'Moderate';
+      if (rainfall < 10) return 'Heavy';
+      return 'Very Heavy';
+    };
 
     return (
       <>
-        {rainfallData.map((reading, index) => {
+        {/* Gradient overlays for rainfall coverage */}
+        {data.rainfall.readings.filter(r => r.value > 0).map((reading, index) => {
           const station = data.rainfall.stations.find((s: any) => s.id === reading.station_id);
           if (!station) return null;
 
           const rainfall = reading.value;
-          // Color and size based on rainfall amount
-          const getColor = () => {
-            if (rainfall < 2) return '#bae6fd';
-            if (rainfall < 5) return '#7dd3fc';
-            if (rainfall < 10) return '#38bdf8';
-            return '#0369a1';
-          };
-
-          const radius = Math.min(5 + rainfall * 2, 20);
+          const color = getRainfallColor(rainfall);
 
           return (
-            <CircleMarker
-              key={`rain-${index}`}
+            <Circle
+              key={`rain-gradient-${index}`}
               center={[station.location.latitude, station.location.longitude]}
-              radius={radius}
+              radius={Math.min(1000 + rainfall * 200, 3000)} // Larger area for heavier rain
               pathOptions={{
-                fillColor: getColor(),
-                fillOpacity: 0.7,
-                color: '#000',
-                weight: 2,
+                fillColor: color,
+                fillOpacity: 0.2,
+                color: color,
+                weight: 0,
               }}
+            />
+          );
+        })}
+
+        {/* Animated rainfall markers */}
+        {data.rainfall.readings.map((reading, index) => {
+          const station = data.rainfall.stations.find((s: any) => s.id === reading.station_id);
+          if (!station) return null;
+
+          const rainfall = reading.value;
+          const color = getRainfallColor(rainfall);
+          const label = getRainfallLabel(rainfall);
+
+          // Create animated droplet effect
+          const createDroplets = () => {
+            if (rainfall === 0) return ''; // No animation for no rain
+
+            const dropletCount = Math.min(Math.floor(rainfall / 2) + 3, 8);
+            const droplets = [];
+
+            for (let i = 0; i < dropletCount; i++) {
+              const delay = i * 0.15;
+              const xOffset = (i % 3) * 10 - 10;
+
+              droplets.push(`
+                <!-- Droplet -->
+                <g opacity="0.8">
+                  <ellipse cx="${30 + xOffset}" cy="10" rx="2" ry="4" fill="${color}">
+                    <animate attributeName="cy" from="10" to="50" dur="1s" begin="${delay}s" repeatCount="indefinite"/>
+                    <animate attributeName="opacity" from="0.8" to="0" dur="1s" begin="${delay}s" repeatCount="indefinite"/>
+                  </ellipse>
+                  <!-- Splash effect at bottom -->
+                  <circle cx="${30 + xOffset}" cy="50" r="0" fill="${color}" opacity="0.5">
+                    <animate attributeName="r" from="0" to="4" dur="0.3s" begin="${delay + 0.9}s" repeatCount="indefinite"/>
+                    <animate attributeName="opacity" from="0.6" to="0" dur="0.3s" begin="${delay + 0.9}s" repeatCount="indefinite"/>
+                  </circle>
+                </g>
+              `);
+            }
+            return droplets.join('');
+          };
+
+          const rainIcon = L.divIcon({
+            html: `
+              <div style="position: relative; width: 60px; height: 60px;">
+                <svg width="60" height="60" style="position: absolute; top: 0; left: 0;">
+                  <!-- Animated droplets -->
+                  ${createDroplets()}
+
+                  <!-- Pulsing ring (only for active rainfall) -->
+                  ${rainfall > 0 ? `
+                    <circle cx="30" cy="30" r="15" fill="none" stroke="${color}" stroke-width="2" opacity="0.6">
+                      <animate attributeName="r" from="12" to="22" dur="2s" repeatCount="indefinite"/>
+                      <animate attributeName="opacity" from="0.8" to="0" dur="2s" repeatCount="indefinite"/>
+                    </circle>
+                  ` : ''}
+
+                  <!-- Central glow -->
+                  <circle cx="30" cy="30" r="12" fill="${color}" opacity="0.3" filter="blur(4px)"/>
+
+                  <!-- Main circle -->
+                  <circle cx="30" cy="30" r="10" fill="white" stroke="${color}" stroke-width="2.5"/>
+
+                  <!-- Rainfall value -->
+                  <text x="30" y="34" text-anchor="middle" font-size="9" font-weight="700" fill="${color}">
+                    ${rainfall.toFixed(1)}
+                  </text>
+                </svg>
+              </div>
+            `,
+            className: 'rain-marker-icon',
+            iconSize: [60, 60],
+            iconAnchor: [30, 30],
+          });
+
+          return (
+            <Marker
+              key={`rain-${index}`}
+              position={[station.location.latitude, station.location.longitude]}
+              icon={rainIcon}
             >
               <Popup>
                 <div style={{ fontSize: '12px' }}>
                   <div style={{ fontWeight: '600', marginBottom: '4px' }}>
                     {station.name || station.id}
                   </div>
-                  <div style={{ color: getColor(), fontWeight: '700', fontSize: '16px' }}>
-                    {rainfall} mm
+                  <div style={{ color: color, fontWeight: '700', fontSize: '16px', marginBottom: '4px' }}>
+                    {rainfall.toFixed(1)} mm
+                  </div>
+                  <div style={{ fontSize: '11px', color: color, fontWeight: '600', marginBottom: '2px' }}>
+                    {label}
                   </div>
                   <div style={{ fontSize: '10px', color: '#666' }}>
                     5-min total
                   </div>
                 </div>
               </Popup>
-            </CircleMarker>
+            </Marker>
           );
         })}
       </>
