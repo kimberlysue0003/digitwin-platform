@@ -1,0 +1,23 @@
+{
+  "id": "central-water-catchment",
+  "name": "Central Water Catchment",
+  "bounds": [
+    [
+      1.36,
+      103.78
+    ],
+    [
+      1.41,
+      103.83
+    ]
+  ],
+  "center": [
+    1.385,
+    103.805
+  ],
+  "zoom": 14,
+  "size": [
+    2048,
+    2048
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "id": "north-eastern-islands",
+  "name": "North-Eastern Islands",
+  "bounds": [
+    [
+      1.39,
+      103.94
+    ],
+    [
+      1.43,
+      103.98
+    ]
+  ],
+  "center": [
+    1.41,
+    103.96000000000001
+  ],
+  "zoom": 14,
+  "size": [
+    2048,
+    2048
+  ]
+}

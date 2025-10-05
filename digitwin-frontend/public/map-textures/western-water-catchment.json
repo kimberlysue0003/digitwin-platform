@@ -1,0 +1,23 @@
+{
+  "id": "western-water-catchment",
+  "name": "Western Water Catchment",
+  "bounds": [
+    [
+      1.385,
+      103.685
+    ],
+    [
+      1.425,
+      103.725
+    ]
+  ],
+  "center": [
+    1.405,
+    103.705
+  ],
+  "zoom": 14,
+  "size": [
+    2048,
+    2048
+  ]
+}

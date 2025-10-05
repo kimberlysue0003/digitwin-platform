@@ -1,0 +1,23 @@
+{
+  "id": "singapore-river",
+  "name": "Singapore River",
+  "bounds": [
+    [
+      1.28,
+      103.84
+    ],
+    [
+      1.295,
+      103.86
+    ]
+  ],
+  "center": [
+    1.2875,
+    103.85
+  ],
+  "zoom": 14,
+  "size": [
+    2048,
+    2048
+  ]
+}

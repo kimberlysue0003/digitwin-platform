@@ -127,15 +127,9 @@ export function RainfallParticles({ planningAreaId }: Props) {
       const z = minZ + Math.random() * areaHeight;
       totalRainfall += getRainfallAt(x, z);
     }
-    let avgRainfall = totalRainfall / samplePoints;
+    const avgRainfall = totalRainfall / samplePoints;
 
-    // TEST MODE: Force heavy rain for Choa Chu Kang to demo effect
-    if (planningAreaId === 'choa-chu-kang') {
-      avgRainfall = 20; // Simulate heavy rainstorm (30mm/hour)
-      console.log(`🌧️ TEST MODE: Simulating HEAVY RAINSTORM for ${planningAreaId}: ${avgRainfall} mm`);
-    } else {
-      console.log(`Rainfall for ${planningAreaId}: ${avgRainfall.toFixed(2)} mm`);
-    }
+    console.log(`Rainfall for ${planningAreaId}: ${avgRainfall.toFixed(2)} mm`);
 
     // Adjust particle count based on rainfall intensity
     // Light rain: fewer particles, Heavy rain: many particles

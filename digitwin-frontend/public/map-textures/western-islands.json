@@ -1,0 +1,23 @@
+{
+  "id": "western-islands",
+  "name": "Western Islands",
+  "bounds": [
+    [
+      1.18,
+      103.72
+    ],
+    [
+      1.23,
+      103.77
+    ]
+  ],
+  "center": [
+    1.205,
+    103.745
+  ],
+  "zoom": 14,
+  "size": [
+    2048,
+    2048
+  ]
+}
