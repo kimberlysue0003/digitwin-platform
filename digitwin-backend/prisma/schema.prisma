@@ -1,0 +1,124 @@
+// Singapore Urban Digital Twin Database Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Planning Area - 55 regions in Singapore
+model PlanningArea {
+  id          String    @id // e.g., 'choa-chu-kang'
+  name        String    // e.g., 'Choa Chu Kang'
+  region      String    // 'central', 'north', 'south', 'east', 'west'
+  centerLat   Float
+  centerLng   Float
+  boundsMinLat Float
+  boundsMinLng Float
+  boundsMaxLat Float
+  boundsMaxLng Float
+
+  buildings   Building[]
+  streamlines WindStreamline[]
+  mapTexture  MapTexture?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([region])
+}
+
+// Building - Real building footprints from OpenStreetMap
+model Building {
+  id             Int      @id @default(autoincrement())
+  planningAreaId String
+  planningArea   PlanningArea @relation(fields: [planningAreaId], references: [id])
+
+  // Footprint polygon stored as JSON array: [[x,z], [x,z], ...]
+  // Coordinates are in local 3D space (meters from area center)
+  footprint      Json
+  height         Float    // meters
+
+  // Optional metadata
+  buildingType   String?  // 'apartments', 'commercial', 'house', etc.
+  levels         Int?     // number of floors
+
+  source         String   @default("OpenStreetMap")
+  fetchedAt      DateTime
+  createdAt      DateTime @default(now())
+
+  @@index([planningAreaId])
+}
+
+// Wind Streamline - Pre-computed wind flow paths
+model WindStreamline {
+  id             Int      @id @default(autoincrement())
+  planningAreaId String
+  planningArea   PlanningArea @relation(fields: [planningAreaId], references: [id])
+
+  direction      String   // 'N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'
+
+  // Path points stored as JSON array: [[x,y,z], [x,y,z], ...]
+  // Coordinates are in local 3D space
+  points         Json
+
+  createdAt      DateTime @default(now())
+
+  @@index([planningAreaId, direction])
+}
+
+// Map Texture - Ground map metadata (PNG files stored in static folder)
+model MapTexture {
+  id             Int      @id @default(autoincrement())
+  planningAreaId String   @unique
+  planningArea   PlanningArea @relation(fields: [planningAreaId], references: [id])
+
+  // File path relative to static folder
+  pngFilePath    String   // e.g., 'map-textures/choa-chu-kang.png'
+
+  // Metadata for rendering
+  boundsMinLat   Float
+  boundsMinLng   Float
+  boundsMaxLat   Float
+  boundsMaxLng   Float
+  centerLat      Float
+  centerLng      Float
+  zoom           Int      @default(14)
+  width          Int      @default(2048)
+  height         Int      @default(2048)
+
+  createdAt      DateTime @default(now())
+}
+
+// Weather Station - Reference data from NEA
+model WeatherStation {
+  id          Int      @id @default(autoincrement())
+  stationId   String   @unique // 'S109', 'S44', etc.
+  stationName String?  // 'Ang Mo Kio Ave 5'
+  latitude    Float
+  longitude   Float
+  stationType String[] // ['temperature', 'wind', 'rainfall']
+  isActive    Boolean  @default(true)
+  lastSeen    DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([stationId])
+}
+
+// Pollution Region - 5 regions (N/S/E/W/C)
+model PollutionRegion {
+  id          Int      @id @default(autoincrement())
+  regionName  String   @unique // 'north', 'south', 'east', 'west', 'central'
+
+  // Approximate polygon boundary stored as JSON
+  boundaryGeoJson Json
+  centerLat   Float
+  centerLng   Float
+
+  createdAt   DateTime @default(now())
+}

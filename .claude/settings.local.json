@@ -6,7 +6,10 @@
       "Bash(git push:*)",
       "Bash(curl -X POST \"https://overpass-api.de/api/interpreter\" -d '[out:json][timeout:60];area[\"\"\"\"name\"\"\"\"=\"\"\"\"Singapore\"\"\"\"]->.a;(way[\"\"\"\"building\"\"\"\"](area.a)(1.2590,103.8500,1.2750,103.8700););out geom;')",
       "Bash(node:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(docker run:*)",
+      "Bash(npx prisma migrate dev:*)",
+      "Bash(docker logs:*)"
     ],
     "deny": [],
     "ask": []
