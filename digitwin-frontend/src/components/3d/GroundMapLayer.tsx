@@ -46,18 +46,17 @@ function GroundMapTexture({ textureUrl, metadata }: { textureUrl: string; metada
       texture.minFilter = THREE.LinearFilter;
       texture.magFilter = THREE.LinearFilter;
       texture.anisotropy = 16;
-
     }
   }, [texture]);
 
-  // Use the rectangular bounds size for the plane
-  // The texture will be stretched across this rectangle, with transparent areas outside the polygon
   const [[minLat, minLng], [maxLat, maxLng]] = metadata.bounds;
   const scale = 111000;
 
   const width = (maxLng - minLng) * scale;
   const height = (maxLat - minLat) * scale;
 
+  // PNG texture is already clipped to polygon shape with transparency
+  // Just use a simple plane to display it
   return (
     <mesh
       rotation={[-Math.PI / 2, 0, 0]}
@@ -68,7 +67,7 @@ function GroundMapTexture({ textureUrl, metadata }: { textureUrl: string; metada
       <meshStandardMaterial
         map={texture}
         transparent={true}
-        alphaTest={0.01}
+        alphaTest={0.1}
         roughness={1.0}
         metalness={0.0}
       />

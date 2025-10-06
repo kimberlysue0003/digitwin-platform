@@ -9,7 +9,18 @@
       "Bash(cat:*)",
       "Bash(docker run:*)",
       "Bash(npx prisma migrate dev:*)",
-      "Bash(docker logs:*)"
+      "Bash(docker logs:*)",
+      "Bash(docker exec:*)",
+      "Bash(docker stop:*)",
+      "Bash(docker rm:*)",
+      "Bash(timeout:*)",
+      "Bash(set DATABASE_URL=postgresql://postgres:digitwin123@127.0.0.1:5432/digitwin?schema=public)",
+      "Bash(npx prisma generate:*)",
+      "Bash(npm install:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(tasklist)",
+      "Bash(npm run dev:*)"
     ],
     "deny": [],
     "ask": []
