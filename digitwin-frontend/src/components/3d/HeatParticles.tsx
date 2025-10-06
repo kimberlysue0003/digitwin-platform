@@ -1,20 +1,9 @@
 // Temperature particle effect distributed across buildings
-import { useRef, useMemo, useEffect, useState } from 'react';
+import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useAreaTemperature } from '../../hooks/useAreaTemperature';
-
-interface Building {
-  footprint: [number, number][];
-  height: number;
-}
-
-interface BuildingData {
-  planningArea: string;
-  id: string;
-  buildingCount: number;
-  buildings: Building[];
-}
+import { useMapBounds } from '../../hooks/useMapBounds';
 
 interface Props {
   planningAreaId: string;
@@ -23,8 +12,7 @@ interface Props {
 export function HeatParticles({ planningAreaId }: Props) {
   const particlesRef = useRef<THREE.Points>(null);
   const areaTemperature = useAreaTemperature(planningAreaId);
-  const [mapMetadata, setMapMetadata] = useState<any>(null);
-  const [mapTexture, setMapTexture] = useState<HTMLImageElement | null>(null);
+  const mapBounds = useMapBounds(planningAreaId);
 
   // Create solid circular particle texture (no transparency in center)
   const particleTexture = useMemo(() => {
@@ -46,36 +34,9 @@ export function HeatParticles({ planningAreaId }: Props) {
     return new THREE.CanvasTexture(canvas);
   }, []);
 
-  // Load map metadata and texture
-  useEffect(() => {
-    const loadMapData = async () => {
-      try {
-        // Load metadata
-        const metaResponse = await fetch(`/map-textures/${planningAreaId}.json`);
-        if (!metaResponse.ok) {
-          console.warn(`No map metadata for ${planningAreaId}`);
-          return;
-        }
-        const metadata = await metaResponse.json();
-        setMapMetadata(metadata);
-
-        // Load texture
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => setMapTexture(img);
-        img.onerror = () => console.error('Failed to load map texture');
-        img.src = `/map-textures/${planningAreaId}.png`;
-      } catch (error) {
-        console.error('Failed to load map data:', error);
-      }
-    };
-
-    loadMapData();
-  }, [planningAreaId]);
-
   // Create particle cloud aligned with map texture
   const { positions, colors, velocities, initialPositions } = useMemo(() => {
-    if (!mapMetadata || !areaTemperature || !mapTexture) {
+    if (!mapBounds.isLoaded || !areaTemperature) {
       return {
         positions: new Float32Array(0),
         colors: new Float32Array(0),
@@ -85,35 +46,7 @@ export function HeatParticles({ planningAreaId }: Props) {
     }
 
     const temp = areaTemperature;
-
-    // Extract alpha channel from map texture
-    const canvas = document.createElement('canvas');
-    canvas.width = mapTexture.width;
-    canvas.height = mapTexture.height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return {
-      positions: new Float32Array(0),
-      colors: new Float32Array(0),
-      velocities: new Float32Array(0),
-      initialPositions: new Float32Array(0)
-    };
-
-    ctx.drawImage(mapTexture, 0, 0);
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const alphaData = imageData.data; // RGBA format
-
-    // Helper function to check if a pixel is non-transparent
-    const isNonTransparent = (x: number, y: number): boolean => {
-      if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) return false;
-      const idx = (y * canvas.width + x) * 4;
-      return alphaData[idx + 3] > 128; // Alpha > 128 = non-transparent
-    };
-
-    // Use map metadata bounds (same as GroundMapLayer)
-    const [[minLat, minLng], [maxLat, maxLng]] = mapMetadata.bounds;
-    const scale = 111000;
-    const width = (maxLng - minLng) * scale;
-    const height = (maxLat - minLat) * scale;
+    const { width, height, textureWidth, textureHeight, isNonTransparent } = mapBounds;
 
     // Reduced particle density to 1/50 of original
     const particleDensity = 0.0003; // particles per square meter (reduced from 0.015)
@@ -139,8 +72,8 @@ export function HeatParticles({ planningAreaId }: Props) {
       // Convert 3D position to texture UV coordinates
       const u = (x + width / 2) / width;   // 0 to 1
       const v = (z + height / 2) / height; // 0 to 1
-      const texX = Math.floor(u * canvas.width);
-      const texY = Math.floor(v * canvas.height);
+      const texX = Math.floor(u * textureWidth);
+      const texY = Math.floor(v * textureHeight);
 
       // Check if this position is on non-transparent area
       if (!isNonTransparent(texX, texY)) continue;
@@ -206,7 +139,7 @@ export function HeatParticles({ planningAreaId }: Props) {
     console.log(`Created ${positions.length / 3} temperature particles with temp=${temp.toFixed(1)}°C (${attempts} attempts)`);
 
     return { positions, colors, velocities, initialPositions };
-  }, [mapMetadata, areaTemperature, mapTexture]);
+  }, [mapBounds, areaTemperature]);
 
   // Animate particles
   useFrame((state, delta) => {

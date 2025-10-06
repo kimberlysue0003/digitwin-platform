@@ -159,22 +159,22 @@ export function BuildingsLayer() {
 
       {/* Temperature visualization layers */}
       {activeLayer === 'temperature' && (
-        <HeatParticles planningAreaId={selectedPlanningArea} />
+        <HeatParticles key={selectedPlanningArea} planningAreaId={selectedPlanningArea} />
       )}
 
       {/* Wind visualization layers */}
       {activeLayer === 'wind' && (
-        <WindStreamlines planningAreaId={selectedPlanningArea} />
+        <WindStreamlines key={selectedPlanningArea} planningAreaId={selectedPlanningArea} />
       )}
 
       {/* Air quality visualization layers */}
       {activeLayer === 'airQuality' && (
-        <AirQualityParticles planningAreaId={selectedPlanningArea} />
+        <AirQualityParticles key={selectedPlanningArea} planningAreaId={selectedPlanningArea} />
       )}
 
       {/* Rainfall visualization layers */}
       {activeLayer === 'rainfall' && (
-        <RainfallParticles planningAreaId={selectedPlanningArea} />
+        <RainfallParticles key={selectedPlanningArea} planningAreaId={selectedPlanningArea} />
       )}
 
       {/* Buildings */}

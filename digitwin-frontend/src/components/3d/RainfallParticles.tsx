@@ -3,6 +3,7 @@ import { useRef, useMemo, useEffect, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useEnvironmentStore } from '../../stores/environmentStore';
+import { useMapBounds } from '../../hooks/useMapBounds';
 
 interface Building {
   footprint: [number, number][];
@@ -24,8 +25,7 @@ export function RainfallParticles({ planningAreaId }: Props) {
   const particlesRef = useRef<THREE.LineSegments>(null);
   const { data } = useEnvironmentStore();
   const [buildingBounds, setBuildingBounds] = useState<{ minX: number; maxX: number; minZ: number; maxZ: number } | null>(null);
-  const [mapMetadata, setMapMetadata] = useState<any>(null);
-  const [mapTexture, setMapTexture] = useState<HTMLImageElement | null>(null);
+  const mapBounds = useMapBounds(planningAreaId);
 
   // Create circular particle texture (same as HeatParticles)
   const raindropTexture = useMemo(() => {
@@ -46,32 +46,6 @@ export function RainfallParticles({ planningAreaId }: Props) {
     return new THREE.CanvasTexture(canvas);
   }, []);
 
-  // Load map metadata and texture for area-specific center coordinates and alpha channel
-  useEffect(() => {
-    const loadMapData = async () => {
-      try {
-        // Load metadata
-        const metaResponse = await fetch(`/map-textures/${planningAreaId}.json`);
-        if (!metaResponse.ok) {
-          console.warn(`No map metadata for ${planningAreaId}`);
-          return;
-        }
-        const metadata = await metaResponse.json();
-        setMapMetadata(metadata);
-
-        // Load texture
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => setMapTexture(img);
-        img.onerror = () => console.error('Failed to load map texture');
-        img.src = `/map-textures/${planningAreaId}.png`;
-      } catch (error) {
-        console.error('Failed to load map data:', error);
-      }
-    };
-
-    loadMapData();
-  }, [planningAreaId]);
 
   // Load building data to get bounds
   useEffect(() => {
@@ -105,7 +79,7 @@ export function RainfallParticles({ planningAreaId }: Props) {
 
   // Create rain particle system
   const { positions, colors, velocities, initialPositions } = useMemo(() => {
-    if (!data?.rainfall?.readings || !data?.rainfall?.stations || !buildingBounds || !mapMetadata || !mapTexture) {
+    if (!data?.rainfall?.readings || !data?.rainfall?.stations || !buildingBounds || !mapBounds.isLoaded) {
       return {
         positions: new Float32Array(0),
         colors: new Float32Array(0),
@@ -115,38 +89,11 @@ export function RainfallParticles({ planningAreaId }: Props) {
     }
 
     const { stations, readings } = data.rainfall;
-
-    // Extract alpha channel from map texture
-    const canvas = document.createElement('canvas');
-    canvas.width = mapTexture.width;
-    canvas.height = mapTexture.height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return {
-      positions: new Float32Array(0),
-      colors: new Float32Array(0),
-      velocities: new Float32Array(0),
-      initialPositions: new Float32Array(0)
-    };
-
-    ctx.drawImage(mapTexture, 0, 0);
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const alphaData = imageData.data; // RGBA format
-
-    // Helper function to check if a pixel is non-transparent
-    const isNonTransparent = (x: number, y: number): boolean => {
-      if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) return false;
-      const idx = (y * canvas.width + x) * 4;
-      return alphaData[idx + 3] > 128; // Alpha > 128 = non-transparent
-    };
-
-    // Use map metadata bounds (same as GroundMapLayer)
-    const [[minLat, minLng], [maxLat, maxLng]] = mapMetadata.bounds;
-    const scale = 111000;
-    const width = (maxLng - minLng) * scale;
-    const height = (maxLat - minLat) * scale;
+    const { width, height, textureWidth, textureHeight, isNonTransparent, metadata } = mapBounds;
 
     // Use area-specific center coordinates from mapMetadata
-    const [centerLat, centerLng] = mapMetadata.center;
+    const [centerLat, centerLng] = metadata!.center;
+    const scale = 111000;
 
     // IDW interpolation for rainfall at position
     const getRainfallAt = (x: number, z: number): number => {
@@ -173,16 +120,24 @@ export function RainfallParticles({ planningAreaId }: Props) {
     };
 
     // Calculate average rainfall for the area
-    let totalRainfall = 0;
-    const samplePoints = 25;
-    for (let i = 0; i < samplePoints; i++) {
-      const x = (Math.random() - 0.5) * width;
-      const z = (Math.random() - 0.5) * height;
-      totalRainfall += getRainfallAt(x, z);
-    }
-    const avgRainfall = totalRainfall / samplePoints;
+    let avgRainfall = 0;
 
-    console.log(`Rainfall for ${planningAreaId}: ${avgRainfall.toFixed(2)} mm`);
+    // SHOWCASE: Override Boon Lay area with heavy rain for demonstration
+    if (planningAreaId === 'boon-lay') {
+      avgRainfall = 25.0; // Heavy rain showcase
+      console.log(`Rainfall for ${planningAreaId}: ${avgRainfall.toFixed(2)} mm (SHOWCASE)`);
+    } else {
+      // Real-time calculation for other areas
+      let totalRainfall = 0;
+      const samplePoints = 25;
+      for (let i = 0; i < samplePoints; i++) {
+        const x = (Math.random() - 0.5) * width;
+        const z = (Math.random() - 0.5) * height;
+        totalRainfall += getRainfallAt(x, z);
+      }
+      avgRainfall = totalRainfall / samplePoints;
+      console.log(`Rainfall for ${planningAreaId}: ${avgRainfall.toFixed(2)} mm`);
+    }
 
     // If no rainfall, don't create any particles
     if (avgRainfall < 0.05) {
@@ -251,8 +206,8 @@ export function RainfallParticles({ planningAreaId }: Props) {
       // Convert 3D position to texture UV coordinates
       const u = (x + width / 2) / width;   // 0 to 1
       const v = (z + height / 2) / height; // 0 to 1
-      const texX = Math.floor(u * canvas.width);
-      const texY = Math.floor(v * canvas.height);
+      const texX = Math.floor(u * textureWidth);
+      const texY = Math.floor(v * textureHeight);
 
       // Check if this position is on non-transparent area
       if (!isNonTransparent(texX, texY)) continue;
@@ -290,7 +245,7 @@ export function RainfallParticles({ planningAreaId }: Props) {
     console.log(`Raindrop color: RGB(${(r * 255).toFixed(0)}, ${(g * 255).toFixed(0)}, ${(b * 255).toFixed(0)})`);
 
     return { positions, colors, velocities, initialPositions };
-  }, [data, buildingBounds, mapMetadata, mapTexture, planningAreaId]);
+  }, [data, buildingBounds, mapBounds, planningAreaId]);
 
   // Animate rain falling
   useFrame((state, delta) => {
