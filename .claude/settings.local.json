@@ -20,7 +20,9 @@
       "Bash(netstat:*)",
       "Bash(findstr:*)",
       "Bash(tasklist)",
-      "Bash(npm run dev:*)"
+      "Bash(npm run dev:*)",
+      "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f --msg-filter 'grep -v \"\"🤖 Generated with\"\" | grep -v \"\"Co-Authored-By: Claude\"\" | grep -v \"\"^$\"\"' HEAD~2..HEAD)",
+      "Bash(git rebase:*)"
     ],
     "deny": [],
     "ask": []
