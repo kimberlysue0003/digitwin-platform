@@ -6,27 +6,6 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load GeoJSON for polygon filtering
-const geojsonPath = path.join(__dirname, '../public/data/MasterPlan2019PlanningAreaBoundaryNoSea.geojson');
-const geojsonData = JSON.parse(fs.readFileSync(geojsonPath, 'utf-8'));
-
-function parseAreaFromDescription(description) {
-  const match = description.match(/<th>PLN_AREA_N<\/th> <td>([^<]+)<\/td>/);
-  return match ? match[1] : null;
-}
-
-function nameToId(name) {
-  return name.toLowerCase().replace(/\s+/g, '-');
-}
-
-function getAreaGeometry(areaId) {
-  const feature = geojsonData.features.find(f => {
-    const areaName = parseAreaFromDescription(f.properties.Description);
-    return areaName && nameToId(areaName) === areaId;
-  });
-  return feature ? feature.geometry : null;
-}
-
 function isPointInPolygon(point, polygon) {
   const [x, y] = point;
   let inside = false;
@@ -85,11 +64,13 @@ out geom;
   const osmData = await response.json();
   console.log(`  Received ${osmData.elements.length} building elements`);
 
-  // Process buildings
+  // Process buildings using the SAME center calculation as 2D map
   const buildings = [];
   const centerLat = (minLat + maxLat) / 2;
   const centerLng = (minLng + maxLng) / 2;
   const scale = 111000;
+
+  console.log(`  Using center: [${centerLat.toFixed(6)}, ${centerLng.toFixed(6)}]`);
 
   function toLocal(lat, lng) {
     const x = (lng - centerLng) * scale;

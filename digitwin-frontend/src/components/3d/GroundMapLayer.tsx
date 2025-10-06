@@ -56,7 +56,7 @@ function GroundMapTexture({ textureUrl, metadata }: { textureUrl: string; metada
   const height = (maxLat - minLat) * scale;
 
   // PNG texture is already clipped to polygon shape with transparency
-  // Just use a simple plane to display it
+  // Both 2D map and 3D buildings use bounds center for coordinate transformation
   return (
     <mesh
       rotation={[-Math.PI / 2, 0, 0]}
