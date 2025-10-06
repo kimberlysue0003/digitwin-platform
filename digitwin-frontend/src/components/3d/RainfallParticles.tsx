@@ -127,20 +127,37 @@ export function RainfallParticles({ planningAreaId }: Props) {
       avgRainfall = 25.0; // Heavy rain showcase
       console.log(`Rainfall for ${planningAreaId}: ${avgRainfall.toFixed(2)} mm (SHOWCASE)`);
     } else {
-      // Real-time calculation for other areas
-      let totalRainfall = 0;
-      const samplePoints = 25;
-      for (let i = 0; i < samplePoints; i++) {
-        const x = (Math.random() - 0.5) * width;
-        const z = (Math.random() - 0.5) * height;
-        totalRainfall += getRainfallAt(x, z);
+      // Find the maximum rainfall reading from any station
+      const maxReading = Math.max(...readings.map(r => r.value));
+
+      // If there's any rainfall detected anywhere, use it for the area
+      // This ensures we show rain if the API reports rain
+      if (maxReading > 0) {
+        // Real-time calculation for the area using IDW
+        let totalRainfall = 0;
+        const samplePoints = 25;
+        for (let i = 0; i < samplePoints; i++) {
+          const x = (Math.random() - 0.5) * width;
+          const z = (Math.random() - 0.5) * height;
+          totalRainfall += getRainfallAt(x, z);
+        }
+        avgRainfall = totalRainfall / samplePoints;
+
+        // If IDW gave us very low values but there's rain somewhere, use at least the max reading scaled down
+        if (avgRainfall < 0.01 && maxReading > 0.1) {
+          avgRainfall = maxReading * 0.3; // Use 30% of max reading as fallback
+          console.log(`Rainfall for ${planningAreaId}: ${avgRainfall.toFixed(2)} mm (fallback from max ${maxReading}mm)`);
+        } else {
+          console.log(`Rainfall for ${planningAreaId}: ${avgRainfall.toFixed(2)} mm (IDW, max reading: ${maxReading}mm)`);
+        }
+      } else {
+        console.log(`Rainfall for ${planningAreaId}: 0.00 mm (no rain detected)`);
       }
-      avgRainfall = totalRainfall / samplePoints;
-      console.log(`Rainfall for ${planningAreaId}: ${avgRainfall.toFixed(2)} mm`);
     }
 
     // If no rainfall, don't create any particles
-    if (avgRainfall < 0.05) {
+    // Use very low threshold to show even light drizzle
+    if (avgRainfall < 0.01) {
       return {
         positions: new Float32Array(0),
         colors: new Float32Array(0),
