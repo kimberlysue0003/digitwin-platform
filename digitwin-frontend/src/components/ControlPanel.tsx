@@ -41,7 +41,7 @@ export function ControlPanel() {
         {layers.map((layer) => (
           <button
             key={layer.id}
-            onClick={() => setActiveLayer(layer.id)}
+            onClick={() => setActiveLayer(activeLayer === layer.id ? null : layer.id)}
             style={{
               padding: '10px 12px',
               borderRadius: '6px',

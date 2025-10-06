@@ -21,9 +21,11 @@ interface Props {
 }
 
 export function RainfallParticles({ planningAreaId }: Props) {
-  const particlesRef = useRef<THREE.Points>(null);
+  const particlesRef = useRef<THREE.LineSegments>(null);
   const { data } = useEnvironmentStore();
   const [buildingBounds, setBuildingBounds] = useState<{ minX: number; maxX: number; minZ: number; maxZ: number } | null>(null);
+  const [mapMetadata, setMapMetadata] = useState<any>(null);
+  const [mapTexture, setMapTexture] = useState<HTMLImageElement | null>(null);
 
   // Create circular particle texture (same as HeatParticles)
   const raindropTexture = useMemo(() => {
@@ -43,6 +45,33 @@ export function RainfallParticles({ planningAreaId }: Props) {
 
     return new THREE.CanvasTexture(canvas);
   }, []);
+
+  // Load map metadata and texture for area-specific center coordinates and alpha channel
+  useEffect(() => {
+    const loadMapData = async () => {
+      try {
+        // Load metadata
+        const metaResponse = await fetch(`/map-textures/${planningAreaId}.json`);
+        if (!metaResponse.ok) {
+          console.warn(`No map metadata for ${planningAreaId}`);
+          return;
+        }
+        const metadata = await metaResponse.json();
+        setMapMetadata(metadata);
+
+        // Load texture
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => setMapTexture(img);
+        img.onerror = () => console.error('Failed to load map texture');
+        img.src = `/map-textures/${planningAreaId}.png`;
+      } catch (error) {
+        console.error('Failed to load map data:', error);
+      }
+    };
+
+    loadMapData();
+  }, [planningAreaId]);
 
   // Load building data to get bounds
   useEffect(() => {
@@ -76,7 +105,7 @@ export function RainfallParticles({ planningAreaId }: Props) {
 
   // Create rain particle system
   const { positions, colors, velocities, initialPositions } = useMemo(() => {
-    if (!data?.rainfall?.readings || !data?.rainfall?.stations || !buildingBounds) {
+    if (!data?.rainfall?.readings || !data?.rainfall?.stations || !buildingBounds || !mapMetadata || !mapTexture) {
       return {
         positions: new Float32Array(0),
         colors: new Float32Array(0),
@@ -87,13 +116,37 @@ export function RainfallParticles({ planningAreaId }: Props) {
 
     const { stations, readings } = data.rainfall;
 
-    const { minX, maxX, minZ, maxZ } = buildingBounds;
-    const areaWidth = maxX - minX;
-    const areaHeight = maxZ - minZ;
+    // Extract alpha channel from map texture
+    const canvas = document.createElement('canvas');
+    canvas.width = mapTexture.width;
+    canvas.height = mapTexture.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return {
+      positions: new Float32Array(0),
+      colors: new Float32Array(0),
+      velocities: new Float32Array(0),
+      initialPositions: new Float32Array(0)
+    };
 
-    const centerLat = 1.3521;
-    const centerLng = 103.8198;
+    ctx.drawImage(mapTexture, 0, 0);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const alphaData = imageData.data; // RGBA format
+
+    // Helper function to check if a pixel is non-transparent
+    const isNonTransparent = (x: number, y: number): boolean => {
+      if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) return false;
+      const idx = (y * canvas.width + x) * 4;
+      return alphaData[idx + 3] > 128; // Alpha > 128 = non-transparent
+    };
+
+    // Use map metadata bounds (same as GroundMapLayer)
+    const [[minLat, minLng], [maxLat, maxLng]] = mapMetadata.bounds;
     const scale = 111000;
+    const width = (maxLng - minLng) * scale;
+    const height = (maxLat - minLat) * scale;
+
+    // Use area-specific center coordinates from mapMetadata
+    const [centerLat, centerLng] = mapMetadata.center;
 
     // IDW interpolation for rainfall at position
     const getRainfallAt = (x: number, z: number): number => {
@@ -123,13 +176,23 @@ export function RainfallParticles({ planningAreaId }: Props) {
     let totalRainfall = 0;
     const samplePoints = 25;
     for (let i = 0; i < samplePoints; i++) {
-      const x = minX + Math.random() * areaWidth;
-      const z = minZ + Math.random() * areaHeight;
+      const x = (Math.random() - 0.5) * width;
+      const z = (Math.random() - 0.5) * height;
       totalRainfall += getRainfallAt(x, z);
     }
     const avgRainfall = totalRainfall / samplePoints;
 
     console.log(`Rainfall for ${planningAreaId}: ${avgRainfall.toFixed(2)} mm`);
+
+    // If no rainfall, don't create any particles
+    if (avgRainfall < 0.05) {
+      return {
+        positions: new Float32Array(0),
+        colors: new Float32Array(0),
+        velocities: new Float32Array(0),
+        initialPositions: new Float32Array(0)
+      };
+    }
 
     // Adjust particle count based on rainfall intensity
     // Light rain: fewer particles, Heavy rain: many particles
@@ -145,12 +208,13 @@ export function RainfallParticles({ planningAreaId }: Props) {
     }
 
     const baseParticles = 2000;
-    const totalParticles = Math.floor(baseParticles * particleMultiplier);
+    const estimatedParticles = Math.floor(baseParticles * particleMultiplier);
 
-    const positions = new Float32Array(totalParticles * 3);
-    const colors = new Float32Array(totalParticles * 3);
-    const velocities = new Float32Array(totalParticles * 3);
-    const initialPositions = new Float32Array(totalParticles * 3);
+    // Temporary arrays to collect valid particles
+    const tempPositions: number[] = [];
+    const tempColors: number[] = [];
+    const tempVelocities: number[] = [];
+    const tempInitialPositions: number[] = [];
 
     // Color based on rainfall intensity - matching 2D layer
     let r, g, b;
@@ -171,34 +235,62 @@ export function RainfallParticles({ planningAreaId }: Props) {
     // Fall speed based on intensity (mm/hour to realistic fall speed)
     const fallSpeed = 50 + avgRainfall * 5; // Faster for heavier rain
 
-    for (let i = 0; i < totalParticles; i++) {
-      // Random position across area
-      const x = minX + Math.random() * areaWidth;
-      const z = minZ + Math.random() * areaHeight;
+    // Raindrop line length (longer for heavier rain)
+    const dropLength = 3 + avgRainfall * 0.5; // 3-15 units long
+
+    let attempts = 0;
+    const maxAttempts = estimatedParticles * 5; // Try up to 5x to find valid positions
+
+    while (tempPositions.length / 6 < estimatedParticles && attempts < maxAttempts) {
+      attempts++;
+
+      // Random position within map bounds (centered at origin like GroundMapLayer)
+      const x = (Math.random() - 0.5) * width;  // -width/2 to +width/2
+      const z = (Math.random() - 0.5) * height; // -height/2 to +height/2
+
+      // Convert 3D position to texture UV coordinates
+      const u = (x + width / 2) / width;   // 0 to 1
+      const v = (z + height / 2) / height; // 0 to 1
+      const texX = Math.floor(u * canvas.width);
+      const texY = Math.floor(v * canvas.height);
+
+      // Check if this position is on non-transparent area
+      if (!isNonTransparent(texX, texY)) continue;
+
+      // Valid position found! Create raindrop line segment
       const y = 150 + Math.random() * 100; // Start from sky
 
-      positions[i * 3] = x;
-      positions[i * 3 + 1] = y;
-      positions[i * 3 + 2] = z;
+      // Top point
+      tempPositions.push(x, y, z);
+      // Bottom point
+      tempPositions.push(x, y - dropLength, z);
 
-      initialPositions[i * 3] = x;
-      initialPositions[i * 3 + 1] = 150 + Math.random() * 100;
-      initialPositions[i * 3 + 2] = z;
+      // Store initial position
+      tempInitialPositions.push(x, 150 + Math.random() * 100, z);
 
-      colors[i * 3] = r;
-      colors[i * 3 + 1] = g;
-      colors[i * 3 + 2] = b;
+      // Color for both vertices (same color)
+      tempColors.push(r, g, b); // Top
+      tempColors.push(r, g, b); // Bottom
 
       // Vertical fall with slight horizontal drift (wind effect)
-      velocities[i * 3] = (Math.random() - 0.5) * 2; // Slight horizontal drift
-      velocities[i * 3 + 1] = -fallSpeed; // Downward
-      velocities[i * 3 + 2] = (Math.random() - 0.5) * 2;
+      tempVelocities.push(
+        (Math.random() - 0.5) * 2, // Slight horizontal drift
+        -fallSpeed,                 // Downward
+        (Math.random() - 0.5) * 2
+      );
     }
 
-    console.log(`Created ${totalParticles} rain particles (${avgRainfall.toFixed(1)}mm, speed: ${fallSpeed})`);
+    // Convert to Float32Arrays
+    const positions = new Float32Array(tempPositions);
+    const colors = new Float32Array(tempColors);
+    const velocities = new Float32Array(tempVelocities);
+    const initialPositions = new Float32Array(tempInitialPositions);
+
+    console.log(`Created ${positions.length / 6} rain particles (${avgRainfall.toFixed(1)}mm, speed: ${fallSpeed}, ${attempts} attempts)`);
+    console.log(`Raindrop color: RGB(${(r * 255).toFixed(0)}, ${(g * 255).toFixed(0)}, ${(b * 255).toFixed(0)})`);
 
     return { positions, colors, velocities, initialPositions };
-  }, [data, buildingBounds, planningAreaId]);
+  }, [data, buildingBounds, mapMetadata, mapTexture, planningAreaId]);
 
   // Animate rain falling
   useFrame((state, delta) => {
@@ -209,22 +301,46 @@ export function RainfallParticles({ planningAreaId }: Props) {
 
     const { minX, maxX, minZ, maxZ } = buildingBounds;
 
-    for (let i = 0; i < positions.length / 3; i++) {
-      // Move particle
-      positions[i * 3] += velocities[i * 3] * delta;
-      positions[i * 3 + 1] += velocities[i * 3 + 1] * delta;
-      positions[i * 3 + 2] += velocities[i * 3 + 2] * delta;
+    // Each raindrop has 2 vertices (line segment)
+    const numDrops = velocities.length / 3;
 
-      // Reset when hits ground or goes out of bounds
+    for (let i = 0; i < numDrops; i++) {
+      const vx = velocities[i * 3];
+      const vy = velocities[i * 3 + 1];
+      const vz = velocities[i * 3 + 2];
+
+      // Update both vertices of the line segment
+      // Top vertex
+      positions[i * 6] += vx * delta;
+      positions[i * 6 + 1] += vy * delta;
+      positions[i * 6 + 2] += vz * delta;
+
+      // Bottom vertex
+      positions[i * 6 + 3] += vx * delta;
+      positions[i * 6 + 4] += vy * delta;
+      positions[i * 6 + 5] += vz * delta;
+
+      // Check if top vertex hits ground or goes out of bounds
       if (
-        positions[i * 3 + 1] < 0 ||
-        positions[i * 3] < minX || positions[i * 3] > maxX ||
-        positions[i * 3 + 2] < minZ || positions[i * 3 + 2] > maxZ
+        positions[i * 6 + 1] < 0 ||
+        positions[i * 6] < minX || positions[i * 6] > maxX ||
+        positions[i * 6 + 2] < minZ || positions[i * 6 + 2] > maxZ
       ) {
         // Respawn at top with new random position
-        positions[i * 3] = minX + Math.random() * (maxX - minX);
-        positions[i * 3 + 1] = initialPositions[i * 3 + 1];
-        positions[i * 3 + 2] = minZ + Math.random() * (maxZ - minZ);
+        const newX = minX + Math.random() * (maxX - minX);
+        const newY = initialPositions[i * 3 + 1];
+        const newZ = minZ + Math.random() * (maxZ - minZ);
+
+        // Top vertex
+        positions[i * 6] = newX;
+        positions[i * 6 + 1] = newY;
+        positions[i * 6 + 2] = newZ;
+
+        // Bottom vertex (offset by drop length)
+        const dropLength = 3 + (data?.rainfall?.readings?.[0]?.value || 0) * 0.5;
+        positions[i * 6 + 3] = newX;
+        positions[i * 6 + 4] = newY - dropLength;
+        positions[i * 6 + 5] = newZ;
       }
     }
 
@@ -234,7 +350,7 @@ export function RainfallParticles({ planningAreaId }: Props) {
   if (positions.length === 0) return null;
 
   return (
-    <points ref={particlesRef}>
+    <lineSegments ref={particlesRef}>
       <bufferGeometry>
         <bufferAttribute
           attach="attributes-position"
@@ -249,16 +365,12 @@ export function RainfallParticles({ planningAreaId }: Props) {
           itemSize={3}
         />
       </bufferGeometry>
-      <pointsMaterial
-        size={8}
-        vertexColors={true}
-        transparent={true}
-        opacity={0.9}
-        sizeAttenuation={true}
-        blending={THREE.AdditiveBlending}
-        depthWrite={false}
-        map={raindropTexture}
+      <lineBasicMaterial
+        vertexColors
+        transparent
+        opacity={0.8}
+        toneMapped={false}
       />
-    </points>
+    </lineSegments>
   );
 }

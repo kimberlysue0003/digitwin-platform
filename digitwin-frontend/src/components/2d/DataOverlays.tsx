@@ -684,11 +684,68 @@ export function DataOverlays({ layer, geoData, onAreaClick }: DataOverlaysProps)
             iconAnchor: [30, 30],
           });
 
+          // Find nearest planning area for this station
+          const findNearestArea = () => {
+            if (!geoData) return null;
+
+            let nearestArea = null;
+            let minDistance = Infinity;
+
+            geoData.features.forEach((feature: any) => {
+              // Calculate center of planning area
+              const coords = feature.geometry?.type === 'MultiPolygon'
+                ? feature.geometry.coordinates[0][0]
+                : feature.geometry?.coordinates?.[0];
+
+              if (!coords) return;
+
+              let latSum = 0, lngSum = 0, count = 0;
+              coords.forEach((point: any) => {
+                if (Array.isArray(point) && typeof point[0] === 'number') {
+                  lngSum += point[0];
+                  latSum += point[1];
+                  count++;
+                }
+              });
+
+              if (count === 0) return;
+
+              const centerLat = latSum / count;
+              const centerLng = lngSum / count;
+
+              // Calculate distance to station
+              const distance = Math.sqrt(
+                Math.pow(centerLat - station.location.latitude, 2) +
+                Math.pow(centerLng - station.location.longitude, 2)
+              );
+
+              if (distance < minDistance) {
+                minDistance = distance;
+                nearestArea = {
+                  name: feature.properties?.name,
+                  id: feature.properties?.id,
+                  region: feature.properties?.region
+                };
+              }
+            });
+
+            return nearestArea;
+          };
+
+          const nearestArea = findNearestArea();
+
           return (
             <Marker
               key={`rain-${index}`}
               position={[station.location.latitude, station.location.longitude]}
               icon={rainIcon}
+              eventHandlers={{
+                click: () => {
+                  if (nearestArea && onAreaClick) {
+                    onAreaClick(nearestArea.name, nearestArea.region, nearestArea.id);
+                  }
+                }
+              }}
             >
               <Popup>
                 <div style={{ fontSize: '12px' }}>
@@ -704,6 +761,11 @@ export function DataOverlays({ layer, geoData, onAreaClick }: DataOverlaysProps)
                   <div style={{ fontSize: '10px', color: '#666' }}>
                     5-min total
                   </div>
+                  {nearestArea && (
+                    <div style={{ fontSize: '10px', color: '#999', marginTop: '4px', fontStyle: 'italic' }}>
+                      Click to view {nearestArea.name}
+                    </div>
+                  )}
                 </div>
               </Popup>
             </Marker>
