@@ -9,6 +9,8 @@ package-lock.json
 
 # Deployment info (PRIVATE)
 .deployment-info
+.deploy.md
+.work-log.md
 
 # Build outputs
 dist/
@@ -25,7 +27,13 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+.claude/
 
 # Temporary files
 *.tmp
 *.swp
+
+# Deployment scripts (don't upload to git)
+deploy-backend.bat
+deploy-frontend.bat
+deploy-all.bat
