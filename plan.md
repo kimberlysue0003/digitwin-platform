@@ -1,772 +1,831 @@
-# City Digital Twin Platform - Development Plan
+# Singapore Digital Twin Platform - Development Plan
 
-## Project Overview
-3D visualization of Singapore city with real-time environmental data overlay including weather, wind speed/direction, and pollution levels.
+## 📋 Overview
 
-## Tech Stack
-
-### Frontend
-- React + Vite + TypeScript
-- Three.js (core 3D rendering)
-- @react-three/fiber + @react-three/drei
-- Zustand (global state)
-- TanStack Query (data fetching/caching)
-- Tailwind CSS (styling)
-- WebSocket client (native or isomorphic-ws)
-
-### Backend
-- Node.js + Fastify
-- PostgreSQL + PostGIS (spatial data & queries)
-- Prisma ORM (regular tables; spatial fields use raw SQL)
-- ws / Socket.IO (real-time push)
-- Optional: BullMQ (task queue for data polling)
-
-### Data & Visualization Goals (MVP)
-- **Base geometry**: Building footprints (GeoJSON/Shapefile) with height/levels attributes
-- **3D city**: Extrude footprints into 3D blocks in Three.js
-- **Coordinate system**: WGS84 → local projection or simple planar conversion
-- **Real-time overlay**: Sensor data (temperature/PM2.5/wind) → WebSocket real-time rendering
-- **Weather simulation**: Deferred to future phase
+This document outlines the complete development plan for:
+1. **Go Backend Rewrite** (Phase A): Migrate from Node.js to Go with Gin framework
+2. **3D Performance Optimization** (Phase B): Optimize building model loading and rendering
 
 ---
 
-## Core Features (Revised Priority)
+# 🔷 Phase A: Go Backend Rewrite (11.5 days)
 
-1. **3D Singapore City Model**
-2. **Real-time Weather Data Overlay** (temperature/rainfall/cloud)
-3. **Wind Speed & Direction Visualization** (particle flow field)
-4. **Pollution Data Heatmap** (PM2.5/PSI)
+## 🎯 Objectives
 
----
+- Migrate backend from Node.js/Express to Go/Gin
+- Implement high-performance RESTful API
+- Import all data (buildings, streamlines, map textures) to PostgreSQL
+- Add Redis caching layer
+- Support WebSocket for real-time data streaming
+- Deploy with Docker
 
-## Singapore Real-time Environment Data APIs
+## 📊 Tech Stack
 
-### ✅ VERIFIED - All APIs Are Functional (Tested 2025-10-05)
+| Component | Technology | Version |
+|-----------|------------|---------|
+| **Language** | Go | 1.23+ |
+| **Web Framework** | Gin | 1.10+ |
+| **ORM** | GORM | 2.x |
+| **Database** | PostgreSQL | 16 |
+| **Cache** | Redis | 7 |
+| **Logger** | Zap | 1.x |
+| **WebSocket** | Gorilla WebSocket | 1.x |
+| **Documentation** | Swagger | - |
+| **Deployment** | Docker | - |
 
-**Base URL**: `https://api-open.data.gov.sg/v2/real-time/api/`
+## 📅 Timeline
 
-| API Endpoint | Data Content | Update Frequency | Sample Data | Visualization Method |
-|-------------|--------------|------------------|------------|---------------------|
-| `/pm25` | PM2.5 concentration (5 regions) | Hourly | West: 11, Central: 7 | Heatmap/regional color overlay |
-| `/psi` | PSI pollution index (5 regions) | Hourly | West: 54, Central: 55 | Color-graded heatmap |
-| `/air-temperature` | Multi-station temperature | Per minute | 12 stations (30-33.6°C) | Temperature field interpolation |
-| `/wind-speed` | Wind speed (13 stations) | Per minute | Range: 1.6-10.5 knots | Particle velocity |
-| `/wind-direction` | Wind direction (13 stations) | Per minute | Range: 0-360 degrees | Particle direction vector |
-| `/rainfall` | Real-time rainfall (54 stations) | Every 5 min | All stations (mm) | Rain particle effect |
+| Phase | Duration | Tasks | Deliverables |
+|-------|----------|-------|--------------|
+| **1. Environment Setup** | 0.5 day | Install Go, initialize project, configure dependencies | go.mod, .env, Makefile |
+| **2. Project Structure** | 0.5 day | Create directories, configuration files | Complete folder structure |
+| **3. Database Layer** | 1.5 days | Define models, database connections, repositories | models/, repositories/ |
+| **4. Business Logic Layer** | 1 day | Implement service layer | services/ |
+| **5. API Layer** | 1.5 days | Gin handlers, routing, middleware | handlers/, router/ |
+| **6. Data Migration** | 2 days | Write import scripts, populate database | scripts/, populated DB |
+| **7. Advanced Features** | 2 days | WebSocket, logging, caching optimization | WebSocket service |
+| **8. Testing** | 1.5 days | Unit tests, integration tests | tests/ |
+| **9. Deployment** | 1 day | Dockerfile, docker-compose, documentation | Docker image, README |
+| **Total** | **11.5 days** | - | **Production-ready Go backend** |
 
-**Key Features:**
-- ✅ **No API key required** for basic access (rate limits apply from Nov 2025)
-- ✅ **Geographic coordinates** included for all weather stations
-- ✅ **JSON format** with consistent structure
-- ✅ **Timezone**: Singapore Time (UTC+8)
+## 🏗️ Architecture Design
 
-**Sample Station Locations:**
-- Ang Mo Kio (1.3764, 103.8492)
-- Sentosa (1.25, 103.8279)
-- Pulau Ubin (1.4168, 103.9673)
-- Tuas South (1.29377, 103.61843)
+### Directory Structure
 
----
-
-## Development Phases
-
-### Phase 1: Project Initialization (1 day)
-
-#### 1.1 Frontend Setup
-```bash
-pnpm create vite@latest digitwin-frontend -- --template react-ts
-cd digitwin-frontend
-pnpm install three @react-three/fiber @react-three/drei zustand @tanstack/react-query tailwindcss
+```
+digitwin-backend-go/
+├── cmd/
+│   └── server/
+│       └── main.go                    # Application entry point
+│
+├── internal/                          # Private application code
+│   ├── config/
+│   │   └── config.go                  # Configuration loader (Viper)
+│   │
+│   ├── database/
+│   │   ├── postgres.go                # PostgreSQL connection pool
+│   │   └── redis.go                   # Redis connection
+│   │
+│   ├── models/                        # GORM data models
+│   │   ├── planning_area.go           # Planning area model
+│   │   ├── building.go                # Building model
+│   │   ├── wind_streamline.go         # Wind streamline model
+│   │   └── map_texture.go             # Map texture model
+│   │
+│   ├── repositories/                  # Data access layer
+│   │   ├── area_repository.go         # Area data access
+│   │   ├── building_repository.go     # Building data access + cache
+│   │   ├── streamline_repository.go   # Streamline data access
+│   │   └── map_texture_repository.go  # Map texture data access
+│   │
+│   ├── services/                      # Business logic layer
+│   │   ├── area_service.go            # Area business logic
+│   │   ├── building_service.go        # Building business logic
+│   │   ├── streamline_service.go      # Streamline business logic
+│   │   └── websocket_service.go       # WebSocket service
+│   │
+│   ├── handlers/                      # Gin HTTP handlers
+│   │   ├── area_handler.go            # Area endpoints
+│   │   ├── building_handler.go        # Building endpoints
+│   │   ├── streamline_handler.go      # Streamline endpoints
+│   │   ├── map_texture_handler.go     # Map texture endpoints
+│   │   ├── health_handler.go          # Health check
+│   │   └── websocket_handler.go       # WebSocket handler
+│   │
+│   ├── middleware/                    # Gin middleware
+│   │   ├── cors.go                    # CORS configuration
+│   │   ├── logger.go                  # Request logging
+│   │   ├── error_handler.go           # Error handling
+│   │   └── rate_limiter.go            # Rate limiting
+│   │
+│   └── router/
+│       └── router.go                  # Route configuration
+│
+├── pkg/                               # Public reusable packages
+│   ├── response/
+│   │   └── json.go                    # Unified JSON response
+│   └── errors/
+│       └── errors.go                  # Custom error types
+│
+├── scripts/                           # Utility scripts
+│   ├── migrate/
+│   │   └── main.go                    # Database migration
+│   ├── import_areas/
+│   │   └── main.go                    # Import planning areas
+│   ├── import_buildings/
+│   │   └── main.go                    # Import buildings (batch insert)
+│   └── import_streamlines/
+│       └── main.go                    # Import wind streamlines
+│
+├── static/                            # Static files
+│   └── map-textures/                  # PNG texture files
+│
+├── tests/
+│   ├── integration/                   # Integration tests
+│   │   └── api_test.go
+│   └── unit/                          # Unit tests
+│       ├── repository_test.go
+│       └── service_test.go
+│
+├── docs/                              # Swagger API documentation
+│   └── swagger.json
+│
+├── .air.toml                          # Hot reload configuration
+├── .env                               # Environment variables
+├── .gitignore
+├── Dockerfile                         # Multi-stage Docker build
+├── docker-compose.yml                 # Docker compose for local dev
+├── Makefile                          # Common commands
+├── go.mod
+├── go.sum
+└── README.md
 ```
 
-**Dependencies:**
+### Layered Architecture
+
+```
+Client Request
+    ↓
+Gin Router (CORS, Logger, Recovery, RateLimiter)
+    ↓
+Handler (Parameter validation, Response formatting)
+    ↓
+Service (Business logic, Error handling)
+    ↓
+Repository (Data access, Redis caching)
+    ↓
+Database (PostgreSQL + Redis)
+```
+
+## 🗄️ Data Models
+
+### 1. PlanningArea
+```go
+type PlanningArea struct {
+    ID           string    // Primary key (e.g., "choa-chu-kang")
+    Name         string    // Display name
+    Region       string    // "central", "north", "south", "east", "west"
+    CenterLat    float64   // Center latitude
+    CenterLng    float64   // Center longitude
+    BoundsMinLat float64   // Bounding box
+    BoundsMinLng float64
+    BoundsMaxLat float64
+    BoundsMaxLng float64
+    CreatedAt    time.Time
+    UpdatedAt    time.Time
+
+    // Relations
+    Buildings       []Building
+    WindStreamlines []WindStreamline
+    MapTexture      *MapTexture
+}
+```
+
+### 2. Building
+```go
+type Building struct {
+    ID             uint      // Auto-increment primary key
+    PlanningAreaID string    // Foreign key
+    Footprint      []Point2D // JSONB array of 2D points
+    Height         float64   // Building height in meters
+    BuildingType   *string   // Optional: "residential", "commercial", etc.
+    Levels         *int      // Optional: number of floors
+    Source         string    // "OpenStreetMap"
+    FetchedAt      time.Time
+    CreatedAt      time.Time
+}
+
+type Point2D struct {
+    X float64 `json:"x"`
+    Z float64 `json:"z"`
+}
+```
+
+### 3. WindStreamline
+```go
+type WindStreamline struct {
+    ID             uint      // Auto-increment primary key
+    PlanningAreaID string    // Foreign key
+    Direction      string    // "N", "NE", "E", "SE", "S", "SW", "W", "NW"
+    Points         []Point3D // JSONB array of 3D points
+    CreatedAt      time.Time
+}
+
+type Point3D struct {
+    X float64 `json:"x"`
+    Y float64 `json:"y"`
+    Z float64 `json:"z"`
+}
+```
+
+### 4. MapTexture
+```go
+type MapTexture struct {
+    ID             uint      // Auto-increment primary key
+    PlanningAreaID string    // Foreign key (unique)
+    PNGFilePath    string    // e.g., "map-textures/choa-chu-kang.png"
+    BoundsMinLat   float64
+    BoundsMinLng   float64
+    BoundsMaxLat   float64
+    BoundsMaxLng   float64
+    CenterLat      float64
+    CenterLng      float64
+    Zoom           int       // Default: 14
+    Width          int       // Default: 2048
+    Height         int       // Default: 2048
+    CreatedAt      time.Time
+}
+```
+
+## 🌐 API Design
+
+### Core Endpoints
+
+| Method | Path | Description | Cache |
+|--------|------|-------------|-------|
+| GET | `/health` | Health check (DB + Redis status) | No |
+| GET | `/api/areas` | List all planning areas | 1 hour |
+| GET | `/api/areas/:id` | Get single area details | 1 hour |
+| GET | `/api/buildings/:id` | Get all buildings for area | 1 hour |
+| GET | `/api/buildings/:id/chunks` | Get chunk info (for streaming) | 1 hour |
+| GET | `/api/buildings/:id/chunk/:chunkId` | Get specific chunk (100 buildings) | 1 hour |
+| GET | `/api/streamlines/:id` | Get wind streamlines for area | 1 hour |
+| GET | `/api/map-textures/:id` | Get map texture metadata | 1 hour |
+| GET | `/ws` | WebSocket for real-time data | - |
+| GET | `/swagger/*` | Swagger API documentation | - |
+| GET | `/static/*` | Static file serving | - |
+
+### Unified Response Format
+
+**Success:**
 ```json
 {
-  "three": "^0.160.0",
-  "@react-three/fiber": "^8.15.0",
-  "@react-three/drei": "^9.92.0",
-  "zustand": "^4.4.0",
-  "@tanstack/react-query": "^5.17.0",
-  "tailwindcss": "^3.4.0"
+  "success": true,
+  "data": {
+    "planningArea": "choa-chu-kang",
+    "count": 1632,
+    "buildings": [...]
+  }
 }
 ```
 
-#### 1.2 Backend Setup
-```bash
-mkdir digitwin-backend && cd digitwin-backend
-pnpm init
-pnpm add fastify @fastify/websocket @fastify/cors prisma @prisma/client
-```
-
-**Dependencies:**
+**Error:**
 ```json
 {
-  "fastify": "^4.25.0",
-  "@fastify/websocket": "^9.0.0",
-  "@fastify/cors": "^9.0.0",
-  "prisma": "^5.8.0",
-  "@prisma/client": "^5.8.0",
-  "node-fetch": "^3.3.0"
+  "success": false,
+  "error": "No buildings found for area: invalid-area-id"
 }
 ```
 
----
+## 📦 Data Migration Strategy
 
-### Phase 2: Data Preparation (1 day)
+### Import Workflow
 
-#### 2.1 Acquire Singapore Building Data
-**Source**: Data.gov.sg
-- Search for "Master Plan" or "Building" datasets
-- Download GeoJSON (recommended: HDB Property Information)
-- Alternative: OneMap API for building footprints
-
-#### 2.2 Database Schema
-
-```sql
--- Building table
-CREATE EXTENSION IF NOT EXISTS postgis;
-
-CREATE TABLE buildings (
-  id SERIAL PRIMARY KEY,
-  name TEXT,
-  geom GEOMETRY(Polygon, 4326),  -- WGS84
-  height FLOAT,                   -- meters
-  levels INT,                     -- number of floors
-  type TEXT                       -- HDB/Commercial/Industrial
-);
-
-CREATE INDEX buildings_geom_idx ON buildings USING GIST(geom);
-
--- Environmental data table (cache NEA data)
-CREATE TABLE environment_readings (
-  id SERIAL PRIMARY KEY,
-  timestamp TIMESTAMPTZ DEFAULT NOW(),
-  location GEOMETRY(Point, 4326),
-  station_id TEXT,
-  temperature FLOAT,
-  wind_speed FLOAT,
-  wind_direction FLOAT,  -- degrees 0-360
-  pm25 FLOAT,
-  psi FLOAT
-);
-
-CREATE INDEX env_timestamp_idx ON environment_readings(timestamp);
-CREATE INDEX env_location_idx ON environment_readings USING GIST(location);
-```
-
-#### 2.3 Prisma Schema
-```prisma
-// schema.prisma
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-model Building {
-  id     Int     @id @default(autoincrement())
-  name   String?
-  height Float?
-  levels Int?
-  type   String?
-  // geom field handled via raw SQL
-}
-```
-
----
-
-### Phase 3: Backend Real-time Data Service (2 days)
-
-#### 3.1 NEA Service Integration
-
-```typescript
-// services/neaService.ts
-import fetch from 'node-fetch';
-
-export class NEAService {
-  private apiKey = process.env.NEA_API_KEY || '';
-  private baseURL = 'https://api.data.gov.sg/v1/environment';
-
-  async getWindData() {
-    const [speedRes, directionRes] = await Promise.all([
-      fetch(`${this.baseURL}/wind-speed`, {
-        headers: { 'api-key': this.apiKey }
-      }),
-      fetch(`${this.baseURL}/wind-direction`, {
-        headers: { 'api-key': this.apiKey }
-      })
-    ]);
-
-    const speedData = await speedRes.json();
-    const directionData = await directionRes.json();
-
-    return this.mergeWindData(speedData, directionData);
-  }
-
-  async getPollutionData() {
-    const res = await fetch(`${this.baseURL}/pm25`, {
-      headers: { 'api-key': this.apiKey }
-    });
-    return res.json();
-  }
-
-  async getTemperatureData() {
-    const res = await fetch(`${this.baseURL}/air-temperature`, {
-      headers: { 'api-key': this.apiKey }
-    });
-    return res.json();
-  }
-
-  async getRainfallData() {
-    const res = await fetch(`${this.baseURL}/rainfall`, {
-      headers: { 'api-key': this.apiKey }
-    });
-    return res.json();
-  }
-
-  private mergeWindData(speed: any, direction: any) {
-    // Merge speed and direction by station
-    const stations = speed.items[0].readings.map((s: any) => {
-      const dir = direction.items[0].readings.find(
-        (d: any) => d.station_id === s.station_id
-      );
-      return {
-        station_id: s.station_id,
-        speed: s.value,
-        direction: dir?.value || 0
-      };
-    });
-    return stations;
-  }
-}
-```
-
-#### 3.2 WebSocket Service
-
-```typescript
-// server.ts
-import Fastify from 'fastify';
-import websocket from '@fastify/websocket';
-import { NEAService } from './services/neaService';
-
-const fastify = Fastify({ logger: true });
-const neaService = new NEAService();
-
-fastify.register(websocket);
-
-fastify.register(async (fastify) => {
-  fastify.get('/ws', { websocket: true }, (socket, req) => {
-    console.log('Client connected');
-
-    const interval = setInterval(async () => {
-      try {
-        const [wind, pollution, temperature, rainfall] = await Promise.all([
-          neaService.getWindData(),
-          neaService.getPollutionData(),
-          neaService.getTemperatureData(),
-          neaService.getRainfallData()
-        ]);
-
-        socket.send(JSON.stringify({
-          type: 'environment_update',
-          timestamp: new Date().toISOString(),
-          data: { wind, pollution, temperature, rainfall }
-        }));
-      } catch (error) {
-        console.error('Error fetching NEA data:', error);
-      }
-    }, 10000); // Push every 10 seconds
-
-    socket.on('close', () => {
-      clearInterval(interval);
-      console.log('Client disconnected');
-    });
-  });
-});
-
-fastify.listen({ port: 3000 }, (err) => {
-  if (err) throw err;
-  console.log('Server listening on port 3000');
-});
-```
-
----
-
-### Phase 4: 3D City Rendering (2 days)
-
-#### 4.1 Main Scene Component
-
-```tsx
-// components/CityScene.tsx
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
-import { BuildingLayer } from './BuildingLayer';
-import { WindParticles } from './WindParticles';
-import { PollutionHeatmap } from './PollutionHeatmap';
-
-export function CityScene() {
-  return (
-    <div className="w-full h-screen relative">
-      <Canvas camera={{ position: [0, 1000, 2000], fov: 50 }}>
-        <ambientLight intensity={0.5} />
-        <directionalLight position={[100, 100, 50]} intensity={1} />
-        <BuildingLayer />
-        <WindParticles />
-        <OrbitControls />
-      </Canvas>
-      <PollutionHeatmap />
-    </div>
-  );
-}
-```
-
-#### 4.2 Building Extrusion
-
-```tsx
-// components/BuildingLayer.tsx
-import { useQuery } from '@tanstack/react-query';
-import * as THREE from 'three';
-
-async function fetchBuildings() {
-  const res = await fetch('http://localhost:3000/api/buildings');
-  return res.json();
-}
-
-export function BuildingLayer() {
-  const { data: buildings } = useQuery(['buildings'], fetchBuildings);
-
-  if (!buildings) return null;
-
-  return (
-    <group>
-      {buildings.map((b: any) => {
-        // Convert GeoJSON coordinates to planar coordinates
-        // Singapore center: ~103.8°E, 1.35°N
-        const coords = b.geom.coordinates[0].map(([lng, lat]: number[]) => ({
-          x: (lng - 103.8) * 111320,  // degrees to meters (approx)
-          y: (lat - 1.35) * 111320
-        }));
-
-        const shape = new THREE.Shape();
-        shape.moveTo(coords[0].x, coords[0].y);
-        coords.slice(1).forEach((c: any) => shape.lineTo(c.x, c.y));
-
-        const height = b.height || b.levels * 3 || 15; // Estimate if missing
-
-        return (
-          <mesh key={b.id} position={[coords[0].x, height / 2, coords[0].y]}>
-            <extrudeGeometry
-              args={[shape, {
-                depth: height,
-                bevelEnabled: false
-              }]}
-            />
-            <meshStandardMaterial color="#cccccc" />
-          </mesh>
-        );
-      })}
-    </group>
-  );
-}
-```
-
----
-
-### Phase 5: Wind Field Particle System (2 days)
-
-```tsx
-// components/WindParticles.tsx
-import { useEffect, useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
-import * as THREE from 'three';
-import { useWebSocket } from '../hooks/useWebSocket';
-
-export function WindParticles() {
-  const { windData } = useWebSocket();
-  const particlesRef = useRef<THREE.Points>(null);
-  const velocitiesRef = useRef<Float32Array>();
-
-  useEffect(() => {
-    const count = 10000;
-    const positions = new Float32Array(count * 3);
-    const velocities = new Float32Array(count * 3);
-
-    // Initialize particle positions
-    for (let i = 0; i < count; i++) {
-      positions[i * 3] = Math.random() * 10000 - 5000;
-      positions[i * 3 + 1] = Math.random() * 500 + 10; // Above ground
-      positions[i * 3 + 2] = Math.random() * 10000 - 5000;
-    }
-
-    velocitiesRef.current = velocities;
-
-    if (particlesRef.current) {
-      const geometry = particlesRef.current.geometry;
-      geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    }
-  }, []);
-
-  useFrame(() => {
-    if (!particlesRef.current || !windData || !velocitiesRef.current) return;
-
-    const positions = particlesRef.current.geometry.attributes.position.array as Float32Array;
-    const avgWind = calculateAverageWind(windData);
-    const windAngle = avgWind.direction * Math.PI / 180;
-    const windSpeed = avgWind.speed;
-
-    for (let i = 0; i < positions.length / 3; i++) {
-      // Update position based on wind
-      positions[i * 3] += Math.sin(windAngle) * windSpeed * 0.1;
-      positions[i * 3 + 2] += Math.cos(windAngle) * windSpeed * 0.1;
-
-      // Boundary reset
-      if (positions[i * 3] > 5000) positions[i * 3] = -5000;
-      if (positions[i * 3] < -5000) positions[i * 3] = 5000;
-      if (positions[i * 3 + 2] > 5000) positions[i * 3 + 2] = -5000;
-      if (positions[i * 3 + 2] < -5000) positions[i * 3 + 2] = 5000;
-    }
-
-    particlesRef.current.geometry.attributes.position.needsUpdate = true;
-  });
-
-  return (
-    <points ref={particlesRef}>
-      <bufferGeometry />
-      <pointsMaterial
-        size={2}
-        color="#4FC3F7"
-        transparent
-        opacity={0.6}
-        sizeAttenuation={true}
-      />
-    </points>
-  );
-}
-
-function calculateAverageWind(windData: any[]) {
-  const sum = windData.reduce((acc, curr) => ({
-    speed: acc.speed + curr.speed,
-    direction: acc.direction + curr.direction
-  }), { speed: 0, direction: 0 });
-
-  return {
-    speed: sum.speed / windData.length,
-    direction: sum.direction / windData.length
-  };
-}
-```
-
----
-
-### Phase 6: Pollution Heatmap (1-2 days)
-
-```tsx
-// components/PollutionHeatmap.tsx
-import { useEffect, useRef } from 'react';
-import { useWebSocket } from '../hooks/useWebSocket';
-
-export function PollutionHeatmap() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { pollution } = useWebSocket();
-
-  useEffect(() => {
-    if (!canvasRef.current || !pollution) return;
-
-    const ctx = canvasRef.current.getContext('2d');
-    if (!ctx) return;
-
-    // Clear canvas
-    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-
-    // Draw pollution data with radial gradients
-    pollution.readings.forEach((station: any) => {
-      const { x, y } = worldToScreen(station.location);
-      const value = station.pm25 || station.psi || 0;
-
-      const gradient = ctx.createRadialGradient(x, y, 0, x, y, 500);
-      const color = getPM25Color(value);
-
-      gradient.addColorStop(0, `${color}80`); // Semi-transparent
-      gradient.addColorStop(1, `${color}00`); // Fully transparent
-
-      ctx.fillStyle = gradient;
-      ctx.fillRect(x - 500, y - 500, 1000, 1000);
-    });
-  }, [pollution]);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      className="absolute inset-0 pointer-events-none"
-      width={window.innerWidth}
-      height={window.innerHeight}
-    />
-  );
-}
-
-function worldToScreen(location: { lat: number; lng: number }) {
-  // Convert lat/lng to screen coordinates
-  // This is a simplified projection
-  const x = (location.lng - 103.8) * 10000 + window.innerWidth / 2;
-  const y = (1.35 - location.lat) * 10000 + window.innerHeight / 2;
-  return { x, y };
-}
-
-function getPM25Color(value: number): string {
-  if (value < 12) return '#00E400';      // Good
-  if (value < 35) return '#FFFF00';      // Moderate
-  if (value < 55) return '#FF7E00';      // Unhealthy for sensitive
-  if (value < 150) return '#FF0000';     // Unhealthy
-  if (value < 250) return '#8F3F97';     // Very unhealthy
-  return '#7E0023';                       // Hazardous
-}
-```
-
----
-
-### Phase 7: WebSocket Hook
-
-```tsx
-// hooks/useWebSocket.ts
-import { useEffect, useState } from 'react';
-import { useStore } from '../store/envStore';
-
-export function useWebSocket(url: string = 'ws://localhost:3000/ws') {
-  const [connected, setConnected] = useState(false);
-  const updateEnvironment = useStore(state => state.updateEnvironment);
-
-  useEffect(() => {
-    const ws = new WebSocket(url);
-
-    ws.onopen = () => {
-      console.log('WebSocket connected');
-      setConnected(true);
-    };
-
-    ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      if (message.type === 'environment_update') {
-        updateEnvironment(message.data);
-      }
-    };
-
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
-
-    ws.onclose = () => {
-      console.log('WebSocket disconnected');
-      setConnected(false);
-    };
-
-    return () => ws.close();
-  }, [url, updateEnvironment]);
-
-  const envData = useStore(state => state.environment);
-
-  return {
-    connected,
-    windData: envData?.wind || [],
-    pollution: envData?.pollution || null,
-    temperature: envData?.temperature || null,
-    rainfall: envData?.rainfall || null
-  };
-}
-```
-
-```tsx
-// store/envStore.ts
-import { create } from 'zustand';
-
-interface EnvironmentState {
-  environment: any;
-  updateEnvironment: (data: any) => void;
-}
-
-export const useStore = create<EnvironmentState>((set) => ({
-  environment: null,
-  updateEnvironment: (data) => set({ environment: data })
-}));
-```
-
----
-
-## Data Flow Architecture
-
-```
-NEA API (10s polling)
-  ↓
-Backend Cache + WebSocket
-  ↓
-Frontend Zustand Store
-  ↓
-┌─────────────────────────────┐
-│  Three.js 3D Scene          │
-│  ├─ Building blocks (static)│
-│  ├─ Wind particles (dynamic)│
-│  ├─ Pollution heatmap (Canvas overlay) │
-│  └─ Temperature markers (Sprite) │
-└─────────────────────────────┘
-```
-
----
-
-## Data Source Security & Reliability
-
-| Data Source | Security | Commercial License | API Stability |
-|------------|----------|-------------------|---------------|
-| Data.gov.sg | ✅ Government official | ✅ Singapore Open Data License | ⭐⭐⭐⭐⭐ |
-| NEA API | ✅ NEA official | ✅ Free to use | ⭐⭐⭐⭐⭐ |
-| OneMap | ✅ Government mapping service | ✅ Attribution required | ⭐⭐⭐⭐ |
-| OpenStreetMap | ✅ Open community | ✅ ODbL License | ⭐⭐⭐⭐ |
-
----
-
-## MVP Data Strategy
-
-### ✅ Building Data Sources (VERIFIED)
-
-**Option 1: URA Master Plan 2019 (Recommended)**
-- **Dataset**: Master Plan 2019 Building Layer
-- **URL**: https://data.gov.sg/datasets/d_e8e3249d4433845bdd8034ae44329d9e/view
-- **Format**: GeoJSON (48.9 MB)
-- **Content**: Building footprints for all buildings in Singapore
-- **Height Data**: Separate layer "Building Height Control" available
-- **License**: Singapore Open Data License
-- **Status**: ✅ Available for immediate download
-
-**Option 2: NUS Urban Analytics Lab - 3D HDB Dataset**
-- **Dataset**: Complete 3D model of all ~12,000 HDB buildings
-- **URL**: https://github.com/ualsg/hdb3d-code
-- **Format**: GeoJSON 2D + 3D formats
-- **Content**: HDB footprints + height + number of storeys + address
-- **License**: Open data (attribution required: NUS UAL, HDB, OSM, OneMap)
-- **Status**: ✅ Available on GitHub
-- **Advantage**: Includes detailed height/storey information
-
-**Recommended Approach:**
-1. Use **URA Master Plan 2019** for complete city coverage (all building types)
-2. Supplement with **NUS HDB dataset** for accurate HDB heights
-3. Merge datasets in PostGIS using spatial joins
-
-### ✅ Real-time Environment Data
-
-**All APIs tested and functional (2025-10-05):**
-1. **Temperature**: 12 stations, per-minute updates, with coordinates
-2. **Wind Speed/Direction**: 13 stations, per-minute updates
-3. **PM2.5**: 5 regional readings, hourly updates
-4. **PSI**: 5 regional readings, hourly updates
-5. **Rainfall**: 54 stations, 5-minute updates
-
-**Implementation:**
-- Backend polls NEA API every 10-30 seconds
-- WebSocket pushes updates to frontend
-- No API key required (rate limits from Nov 2025)
-
-### ⏸️ Deferred Features
-3. **Weather Forecast**: NEA Forecast API (24-hour forecast) - **Phase 2**
-4. **Scenario Simulation**: Frontend input parameters + algorithm calculation - **Phase 2**
-
----
-
-## Priority Adjustment
-
-### Must Have ✅
-1. Basic 3D city rendering (building extrusion)
-2. Real-time sensor data WebSocket push
-3. Simple weather data display
-4. Wind field particle animation
-5. Pollution heatmap
-
-### Nice to Have 🔶
-6. Temperature field interpolation
-7. Rainfall particle effect
-8. Timeline playback
-9. Multiple layer management
-
-### Future Enhancement ⚡
-10. AI prediction model deep integration
-11. Collaborative editing / multi-user
-12. Advanced scenario simulation
-
----
-
-## Timeline Estimate
-
-- **Phase 1**: 1 day (Project initialization)
-- **Phase 2**: 1 day (Data preparation)
-- **Phase 3**: 2 days (Backend services)
-- **Phase 4**: 2 days (3D rendering)
-- **Phase 5**: 2 days (Wind particles)
-- **Phase 6**: 1-2 days (Pollution heatmap)
-- **Phase 7**: Integration & testing (1 day)
-
-**Total MVP**: ~2-3 weeks
-
----
-
-## Deployment Strategy
-
-### Frontend
-- Vercel / Netlify / Self-hosted Nginx
-- Environment variables: `VITE_WS_URL`, `VITE_API_URL`
-
-### Backend
-- Docker container + PM2
-- Environment variables: `NEA_API_KEY`, `DATABASE_URL`
-
-### Database
-- Cloud PostgreSQL with PostGIS (AWS RDS / DigitalOcean)
-- Or local Docker: `postgis/postgis:15-3.3`
-
----
-
-## API Verification Summary (2025-10-05)
-
-### ✅ All Critical APIs Verified Functional
-
-**Real-time Environment APIs:**
 ```bash
-# Base URL: https://api-open.data.gov.sg/v2/real-time/api/
+# 1. Create database tables
+make migrate
 
-✅ /air-temperature    # 12 stations, 30-33.6°C, per-minute
-✅ /wind-speed         # 13 stations, 1.6-10.5 knots, per-minute
-✅ /wind-direction     # 13 stations, 0-360°, per-minute
-✅ /pm25               # 5 regions, 7-12 μg/m³, hourly
-✅ /psi                # 5 regions, 44-56 index, hourly
-✅ /rainfall           # 54 stations, mm, 5-minute intervals
+# 2. Import planning areas (from code constants)
+make import-areas
+
+# 3. Import buildings (~100K buildings from 55 JSON files)
+make import-buildings
+
+# 4. Import wind streamlines (~74K streamlines from 55 JSON files)
+make import-streamlines
+
+# 5. Import map texture metadata (from 55 JSON files)
+make import-textures
+
+# All-in-one command
+make import-all
 ```
 
-**Building Geometry Data:**
+### Performance Optimizations
+
+- Batch insert (1000 records per batch)
+- Use transactions
+- Disable indexes during import, rebuild after
+- Expected import time: **5-10 minutes**
+
+### Data Volume
+
+| Data Type | Count | Size | Source |
+|-----------|-------|------|--------|
+| Planning Areas | 55 | ~10 KB | Code constants |
+| Buildings | ~100,000 | 111 MB | JSON files |
+| Wind Streamlines | ~74,000 | 430 MB | JSON files |
+| Map Textures | 55 | 64 MB | PNG + JSON metadata |
+| **Total** | - | **~605 MB** | - |
+
+## 🔧 Key Technical Features
+
+### 1. JSONB Storage
+
+Store complex structures in PostgreSQL JSONB:
+
+```go
+// Implement custom Scan() and Value() for GORM
+type Footprint []Point2D
+
+func (f *Footprint) Scan(value interface{}) error {
+    bytes, _ := value.([]byte)
+    return json.Unmarshal(bytes, f)
+}
+
+func (f Footprint) Value() (driver.Value, error) {
+    return json.Marshal(f)
+}
+```
+
+### 2. Redis Caching Strategy
+
+```go
+// Cache key format
+buildings:{area_id}       // TTL: 1 hour
+streamlines:{area_id}     // TTL: 1 hour
+areas:all                 // TTL: 1 hour
+```
+
+**Cache Flow:**
+```
+1. Check Redis cache
+2. If hit → return cached data
+3. If miss → query PostgreSQL → cache result → return
+```
+
+### 3. Middleware Stack
+
+```
+HTTP Request
+  → CORS (allow cross-origin)
+  → Logger (structured logging with Zap)
+  → Recovery (panic recovery)
+  → RateLimiter (100 requests/min per IP)
+  → Handler
+  → Response
+```
+
+### 4. WebSocket Streaming
+
+```go
+// Push environment data every 5 seconds
+{
+  "type": "environment_update",
+  "timestamp": "2025-10-12T10:30:00Z",
+  "data": {
+    "temperature": {...},
+    "wind": {...},
+    "pollution": {...}
+  }
+}
+```
+
+## 🧪 Testing Strategy
+
+### Unit Tests
+- Repository layer: Mock GORM
+- Service layer: Mock Repository
+- Target coverage: **70%+**
+
+### Integration Tests
+- Use `httptest` to test Gin handlers
+- Test real database connections
+- Test cache logic
+
+### Performance Tests
+- Use `wrk` or `ab` for benchmarking
+- Target: **10K+ QPS** (single instance)
+
+## 📊 Expected Performance
+
+| Metric | Target | Notes |
+|--------|--------|-------|
+| **Response Time (cached)** | < 50ms | Redis cache hit |
+| **Response Time (DB query)** | < 200ms | PostgreSQL query |
+| **Throughput** | 10K+ QPS | Single instance |
+| **Memory Usage** | 50-100 MB | Idle state |
+| **Startup Time** | < 1 second | Binary startup |
+| **Docker Image Size** | < 30 MB | Alpine base image |
+
+## 🚀 Development Workflow
+
+### Local Development
+
 ```bash
-✅ URA Master Plan 2019 Building Layer (48.9 MB GeoJSON)
-   URL: https://data.gov.sg/datasets/d_e8e3249d4433845bdd8034ae44329d9e/view
+# 1. Start dependencies
+docker-compose up -d postgres redis
 
-✅ NUS HDB 3D Dataset (~12,000 buildings with height)
-   URL: https://github.com/ualsg/hdb3d-code
+# 2. Run development server (hot reload)
+make run
+
+# 3. Access services
+# API: http://localhost:3000
+# Health: http://localhost:3000/health
+# Swagger: http://localhost:3000/swagger/index.html
 ```
 
-**Key Findings:**
-- ✅ No API authentication required (open access)
-- ✅ All APIs return valid JSON with geographic coordinates
-- ✅ Weather stations provide lat/lng for spatial interpolation
-- ✅ Building datasets include sufficient data for 3D extrusion
-- ⚠️ Rate limits coming November 2025 (register for API key recommended)
+### Production Deployment
 
-**Data Quality:**
-- Temperature: 12 stations covering North/South/East/West/Central
-- Wind: 13 stations with both speed (knots) and direction (degrees)
-- Pollution: Regional aggregation (5 zones) suitable for heatmap
-- Rainfall: Excellent coverage with 54 stations across Singapore
+```bash
+# 1. Build Docker image
+make docker-build
+
+# 2. Start all services
+docker-compose up -d
+
+# 3. Import data
+docker-compose exec backend make import-all
+
+# 4. Check health
+curl http://localhost:3000/health
+```
+
+## 📝 Deliverables
+
+### Code
+- ✅ ~50 Go source files
+- ✅ 8+ RESTful API endpoints
+- ✅ WebSocket real-time streaming
+- ✅ Swagger API documentation
+- ✅ Comprehensive error handling
+- ✅ Structured logging
+
+### Data
+- ✅ PostgreSQL database (all data imported)
+- ✅ Redis cache configuration
+- ✅ 55 planning areas
+- ✅ ~100,000 buildings
+- ✅ ~74,000 wind streamlines
+- ✅ 55 map textures
+
+### Documentation
+- ✅ README.md (quick start guide)
+- ✅ API documentation (Swagger)
+- ✅ Architecture design document
+- ✅ Deployment guide
+
+### Deployment
+- ✅ Dockerfile (multi-stage build)
+- ✅ docker-compose.yml
+- ✅ Makefile (automation commands)
+- ✅ .air.toml (development hot reload)
+
+## 🎯 Milestones
+
+### Week 1 (Day 1-5)
+- ✅ Complete Phase 1-5 (environment + code skeleton)
+- ✅ API can return mock data
+- ✅ Swagger documentation accessible
+
+### Week 2 (Day 6-10)
+- ✅ Complete Phase 6-7 (data import + advanced features)
+- ✅ All APIs return real data
+- ✅ WebSocket streaming works
+
+### Week 3 (Day 11-15)
+- ✅ Complete Phase 8-9 (testing + deployment)
+- ✅ Docker deployment successful
+- ✅ All tests passing
+- ✅ Documentation complete
 
 ---
 
-## Next Steps
+# 🔷 Phase B: 3D Building Performance Optimization (1-2 days)
 
-1. ✅ Validate NEA API accessibility - **COMPLETED**
-2. ✅ Find Singapore building dataset on Data.gov.sg - **COMPLETED**
-3. ⏭️ Create project structure (frontend + backend)
-4. ⏭️ Start Phase 1 implementation
+## 🎯 Objectives
+
+- Reduce initial loading time from 5-7 seconds to < 1 second
+- Improve rendering FPS from 20 to 60
+- Implement progressive loading for better UX
+- Optimize both frontend rendering and backend data delivery
+
+## 📊 Current Performance Issues
+
+### Problem Analysis
+
+```
+Current State (Choa Chu Kang example):
+- JSON file size: 2.3 MB (1,632 buildings)
+- Bedok (largest): 8.9 MB (4,000+ buildings)
+
+Loading Flow:
+1. Download full JSON (2-9 MB)           → 1-3 seconds (slow network)
+2. JSON.parse()                          → 200-500ms (large files)
+3. React render 1600+ <mesh> components  → 500-1000ms
+4. Three.js create 1600+ Geometries      → 1-2 seconds
+5. GPU rendering                         → Continuous performance cost
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Total Time: 5-7 seconds + stuttering ❌
+FPS: 15-25 (choppy) ❌
+```
+
+## 💡 Optimization Strategy
+
+### Strategy Matrix
+
+| Optimization | Frontend | Backend | Benefit | Difficulty |
+|--------------|----------|---------|---------|------------|
+| **1. Geometry Merging** | ✅ | - | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
+| **2. LOD System** | ✅ | ✅ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
+| **3. Frustum Culling** | ✅ | - | ⭐⭐⭐⭐ | ⭐⭐ |
+| **4. Data Compression** | - | ✅ | ⭐⭐⭐⭐ | ⭐ |
+| **5. Chunked Streaming** | ✅ | ✅ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
+| **6. Web Worker Parsing** | ✅ | - | ⭐⭐⭐ | ⭐⭐⭐ |
+| **7. IndexedDB Cache** | ✅ | - | ⭐⭐⭐ | ⭐⭐ |
+| **8. Simplified Geometry** | ✅ | ✅ | ⭐⭐⭐ | ⭐⭐ |
+
+## 🔧 Optimization Details
+
+### 1. Geometry Merging + Instancing ⭐⭐⭐⭐⭐
+
+**Concept:**
+Merge 1,600 individual meshes into 3-5 merged geometries
+
+**Performance Impact:**
+```
+Before: 1,600 draw calls → High GPU load
+After:  3-5 draw calls   → GPU load reduced by 99%
+
+Rendering: 20 FPS → 60 FPS ✅
+Load time: -40% (fewer object creations)
+```
+
+**Implementation Approach:**
+- Group buildings by height (low/medium/high)
+- Merge geometries within each group using `mergeBufferGeometries`
+- Render 3 merged meshes instead of 1600+ individual meshes
+- Disable bevels for performance
+
+### 2. LOD (Level of Detail) System ⭐⭐⭐⭐⭐
+
+**Concept:**
+Display different detail levels based on camera distance
+
+**Three LOD Levels:**
+```
+LOD 0 (> 2000m):  Simple boxes
+LOD 1 (500-2000m): Simplified footprints (50% vertices)
+LOD 2 (< 500m):   Full detail
+```
+
+**Performance Impact:**
+```
+Far distance:  1000 simple boxes (not 1600 complex buildings)
+Mid distance:  Simplified versions (50% fewer vertices)
+Near distance: Full detail
+
+Overall: 60-70% performance improvement ✅
+```
+
+### 3. Frustum Culling ⭐⭐⭐⭐
+
+**Concept:**
+Only render buildings visible in camera viewport
+
+**Performance Impact:**
+```
+Typically only 30-40% of buildings are visible
+Render count: 1600 → 500-600
+Performance gain: 40-50% ✅
+```
+
+### 4. Backend Data Compression (Gzip) ⭐⭐⭐⭐
+
+**Concept:**
+Enable gzip compression on backend API responses
+
+**Performance Impact:**
+```
+Before: 2.3 MB JSON
+After:  200-400 KB (80-85% compression)
+Download time: 2-3 seconds → 0.3-0.5 seconds ✅
+```
+
+**Backend Implementation (Go Gin):**
+```go
+import "github.com/gin-contrib/gzip"
+
+func Setup(r *gin.Engine, h *Handlers) {
+    // Add gzip middleware
+    r.Use(gzip.Gzip(gzip.DefaultCompression))
+
+    // ... rest of configuration
+}
+```
+
+### 5. Chunked Streaming Loading ⭐⭐⭐⭐⭐ (Best UX)
+
+**Concept:**
+Load buildings in chunks (100-200 per chunk) for progressive rendering
+
+**API Design:**
+
+```
+GET /api/buildings/:areaId/chunks
+Response:
+{
+  "totalChunks": 16,
+  "chunkSize": 100,
+  "totalCount": 1632
+}
+
+GET /api/buildings/:areaId/chunk/:chunkId
+Response:
+{
+  "chunkId": 0,
+  "buildings": [...100 buildings...]
+}
+```
+
+**Backend Implementation (Go):**
+```go
+// Get chunk metadata
+func (r *BuildingRepository) GetChunkInfo(ctx context.Context, areaID string) (*ChunkInfo, error) {
+    var count int64
+    r.db.Model(&models.Building{}).
+        Where("planning_area_id = ?", areaID).
+        Count(&count)
+
+    return &ChunkInfo{
+        TotalChunks: int(math.Ceil(float64(count) / 100)),
+        ChunkSize:   100,
+        TotalCount:  int(count),
+    }, nil
+}
+
+// Get specific chunk
+func (r *BuildingRepository) GetChunk(ctx context.Context, areaID string, chunkID int) ([]models.Building, error) {
+    var buildings []models.Building
+    err := r.db.Where("planning_area_id = ?", areaID).
+        Offset(chunkID * 100).
+        Limit(100).
+        Find(&buildings).Error
+    return buildings, err
+}
+```
+
+**Performance Impact:**
+```
+Before: Wait 3-7 seconds → Sudden display of all buildings
+After:  0.5 seconds to show first 100 → Progressive loading
+
+First paint: 3-7 seconds → 0.5 seconds ✅✅✅
+User experience: Much better (progressive rendering)
+```
+
+### 6. Simplified Geometry (Backend Preprocessing) ⭐⭐⭐
+
+**Concept:**
+Simplify building footprints during data import using Douglas-Peucker algorithm
+
+**API Support:**
+```
+GET /api/buildings/:id?lod=low     // Simplified (tolerance=5m)
+GET /api/buildings/:id?lod=medium  // Standard (tolerance=2m)
+GET /api/buildings/:id?lod=high    // Full detail (tolerance=0.5m)
+```
+
+**Backend Implementation:**
+- Use Douglas-Peucker algorithm to reduce polygon vertices
+- Store multiple LOD versions or generate on-demand
+- Frontend selects appropriate LOD based on zoom level
+
+### 7. Web Worker JSON Parsing ⭐⭐⭐
+
+**Concept:**
+Parse large JSON files in a Web Worker to avoid blocking main thread
+
+**Performance Impact:**
+```
+Main thread stays responsive during parsing
+No UI freezing during data loading
+```
+
+### 8. IndexedDB Caching ⭐⭐⭐
+
+**Concept:**
+Cache building data in browser IndexedDB for instant second visits
+
+**Performance Impact:**
+```
+First visit:  1-2 seconds (network + parse)
+Second visit: < 100ms (from IndexedDB)
+```
+
+## 📊 Implementation Priority
+
+### Priority 1: Must Implement ⭐⭐⭐⭐⭐
+
+| Optimization | Difficulty | Performance Gain | Time Required |
+|--------------|-----------|------------------|---------------|
+| **Geometry Merging** | ⭐⭐⭐ | 80-90% | 2 hours |
+| **Backend Gzip** | ⭐ | 80% bandwidth | 30 minutes |
+| **Frustum Culling** | ⭐⭐ | 40-50% | 1 hour |
+
+**Total Impact:** Load time **7s → 1.5s**, FPS **20 → 60**
+
+### Priority 2: Recommended ⭐⭐⭐⭐
+
+| Optimization | Difficulty | Performance Gain | Time Required |
+|--------------|-----------|------------------|---------------|
+| **LOD System** | ⭐⭐⭐⭐ | 60-70% | 4 hours |
+| **Chunked Loading** | ⭐⭐⭐⭐ | First paint 80% faster | 6 hours |
+
+**Total Impact:** First paint **0.5s**, complete load **1s**
+
+### Priority 3: Nice to Have ⭐⭐⭐
+
+| Optimization | Difficulty | Performance Gain | Time Required |
+|--------------|-----------|------------------|---------------|
+| **Web Worker** | ⭐⭐⭐ | No main thread blocking | 3 hours |
+| **IndexedDB Cache** | ⭐⭐ | 0 network on revisit | 2 hours |
+
+## 🎯 Performance Targets
+
+```
+┌─────────────────────────────────────────────────┐
+│ Before Optimization                              │
+├─────────────────────────────────────────────────┤
+│ Download time:    2-3 seconds                    │
+│ Parse time:       0.5 seconds                    │
+│ Render time:      2-4 seconds                    │
+│ Total time:       5-7 seconds ❌                 │
+│ FPS:              15-25 (choppy) ❌              │
+└─────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────┐
+│ After Priority 1 Optimizations                   │
+├─────────────────────────────────────────────────┤
+│ Download time:    0.3 seconds (gzip)             │
+│ Parse time:       0.2 seconds                    │
+│ Render time:      0.5 seconds (merged geometry)  │
+│ Total time:       1-1.5 seconds ✅               │
+│ FPS:              55-60 (smooth) ✅              │
+└─────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────┐
+│ After Priority 1+2 Optimizations                 │
+├─────────────────────────────────────────────────┤
+│ First paint:      0.5 seconds (chunked) ✅✅      │
+│ Complete load:    1 second                       │
+│ FPS:              60 (always smooth) ✅✅         │
+└─────────────────────────────────────────────────┘
+```
+
+## 📅 Implementation Timeline
+
+### Option A: Quick Win (2-3 hours)
+```
+1. Backend gzip compression (30 min)
+2. Frontend geometry merging (2 hours)
+
+Result: 7s → 1.5s ✅
+```
+
+### Option B: Best Experience (1-2 days)
+```
+1. Backend gzip + chunked API (4 hours)
+2. Frontend geometry merging + LOD + frustum culling (1 day)
+
+Result: First paint 0.5s, silky 60 FPS ✅✅
+```
+
+## 📝 Deliverables
+
+### Backend Changes
+- ✅ Gzip compression middleware
+- ✅ Chunked loading API endpoints (`/chunks` and `/chunk/:id`)
+- ✅ LOD query parameter support (optional)
+- ✅ Simplified geometry preprocessing (optional)
+
+### Frontend Changes
+- ✅ Geometry merging implementation
+- ✅ LOD system with distance-based switching
+- ✅ Frustum culling
+- ✅ Chunked progressive loading
+- ✅ Loading progress indicators
+- ✅ Web Worker for JSON parsing (optional)
+- ✅ IndexedDB caching (optional)
+
+### Documentation
+- ✅ Performance optimization guide
+- ✅ Before/after metrics
+- ✅ API usage examples
+
+---
+
+## 📋 Project Execution Order
+
+1. **Phase A: Go Backend (11.5 days)** - Complete backend migration first
+2. **Phase B: 3D Optimization (1-2 days)** - Then optimize frontend performance
+
+**Total Project Duration: 12.5-13.5 days**
+
+---
+
+## 🚀 Getting Started
+
+See individual phase sections above for detailed implementation steps.
+
+**Questions or need clarification?** Update this document as development progresses.
