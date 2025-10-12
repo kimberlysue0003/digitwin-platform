@@ -11,6 +11,10 @@ package-lock.json
 .deployment-info
 .deploy.md
 .work-log.md
+Q&A.md
+TODO-ESLint.md
+PROGRESS.md
+progress.md
 
 # Build outputs
 dist/
