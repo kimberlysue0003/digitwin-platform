@@ -3,7 +3,6 @@ package services
 
 import (
 	"context"
-	"digitwin-backend/internal/models"
 	"digitwin-backend/internal/repositories"
 	"encoding/json"
 	"log"
@@ -37,7 +36,7 @@ type Client struct {
 	Conn       *websocket.Conn
 	Send       chan []byte
 	AreaID     string // Subscribed area ID
-	disconnect chan struct{}
+	Disconnect chan struct{}
 }
 
 // WebSocketService manages WebSocket connections and broadcasts
@@ -285,7 +284,7 @@ func (s *WebSocketService) WritePump(client *Client) {
 				return
 			}
 
-		case <-client.disconnect:
+		case <-client.Disconnect:
 			return
 		}
 	}

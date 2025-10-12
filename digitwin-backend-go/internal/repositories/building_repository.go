@@ -113,3 +113,25 @@ func (r *BuildingRepository) Create(ctx context.Context, building *models.Buildi
 func (r *BuildingRepository) BatchCreate(ctx context.Context, buildings []models.Building) error {
 	return r.db.WithContext(ctx).CreateInBatches(buildings, 1000).Error
 }
+
+// CreateBatch is an alias for BatchCreate (for service layer compatibility)
+func (r *BuildingRepository) CreateBatch(ctx context.Context, buildings []models.Building) error {
+	// Clear cache for affected areas
+	areaIDs := make(map[string]bool)
+	for _, b := range buildings {
+		areaIDs[b.PlanningAreaID] = true
+	}
+	for areaID := range areaIDs {
+		r.cache.Del(ctx, fmt.Sprintf("buildings:%s", areaID))
+	}
+
+	return r.BatchCreate(ctx, buildings)
+}
+
+// DeleteByAreaID deletes all buildings for a planning area
+func (r *BuildingRepository) DeleteByAreaID(ctx context.Context, areaID string) error {
+	// Clear cache
+	r.cache.Del(ctx, fmt.Sprintf("buildings:%s", areaID))
+
+	return r.db.WithContext(ctx).Where("planning_area_id = ?", areaID).Delete(&models.Building{}).Error
+}

@@ -57,3 +57,17 @@ func (r *MapTextureRepository) Create(ctx context.Context, texture *models.MapTe
 func (r *MapTextureRepository) BatchCreate(ctx context.Context, textures []models.MapTexture) error {
 	return r.db.WithContext(ctx).CreateInBatches(textures, 100).Error
 }
+
+// Update updates a map texture
+func (r *MapTextureRepository) Update(ctx context.Context, texture *models.MapTexture) error {
+	// Clear cache
+	r.cache.Del(ctx, fmt.Sprintf("map_texture:%s", texture.PlanningAreaID))
+	return r.db.WithContext(ctx).Save(texture).Error
+}
+
+// DeleteByAreaID deletes a map texture by area ID
+func (r *MapTextureRepository) DeleteByAreaID(ctx context.Context, areaID string) error {
+	// Clear cache
+	r.cache.Del(ctx, fmt.Sprintf("map_texture:%s", areaID))
+	return r.db.WithContext(ctx).Where("planning_area_id = ?", areaID).Delete(&models.MapTexture{}).Error
+}

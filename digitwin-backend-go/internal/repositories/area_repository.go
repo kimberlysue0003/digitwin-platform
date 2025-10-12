@@ -82,3 +82,53 @@ func (r *AreaRepository) Create(ctx context.Context, area *models.PlanningArea) 
 func (r *AreaRepository) BatchCreate(ctx context.Context, areas []models.PlanningArea) error {
 	return r.db.WithContext(ctx).CreateInBatches(areas, 100).Error
 }
+
+// GetByRegion retrieves planning areas by region
+func (r *AreaRepository) GetByRegion(ctx context.Context, region string) ([]models.PlanningArea, error) {
+	// Try cache first
+	cacheKey := fmt.Sprintf("areas:region:%s", region)
+	cached, err := r.cache.Get(ctx, cacheKey).Result()
+	if err == nil {
+		var areas []models.PlanningArea
+		if err := json.Unmarshal([]byte(cached), &areas); err == nil {
+			return areas, nil
+		}
+	}
+
+	// Query database
+	var areas []models.PlanningArea
+	if err := r.db.Where("region = ?", region).Find(&areas).Error; err != nil {
+		return nil, fmt.Errorf("failed to query areas by region: %w", err)
+	}
+
+	// Cache for 1 hour
+	data, _ := json.Marshal(areas)
+	r.cache.Set(ctx, cacheKey, data, time.Hour)
+
+	return areas, nil
+}
+
+// Update updates a planning area
+func (r *AreaRepository) Update(ctx context.Context, area *models.PlanningArea) error {
+	// Clear cache
+	r.cache.Del(ctx, "areas:all")
+	r.cache.Del(ctx, fmt.Sprintf("area:%s", area.ID))
+	r.cache.Del(ctx, fmt.Sprintf("areas:region:%s", area.Region))
+
+	return r.db.WithContext(ctx).Save(area).Error
+}
+
+// Delete deletes a planning area
+func (r *AreaRepository) Delete(ctx context.Context, id string) error {
+	// Get area to clear region cache
+	var area models.PlanningArea
+	if err := r.db.Where("id = ?", id).First(&area).Error; err == nil {
+		r.cache.Del(ctx, fmt.Sprintf("areas:region:%s", area.Region))
+	}
+
+	// Clear cache
+	r.cache.Del(ctx, "areas:all")
+	r.cache.Del(ctx, fmt.Sprintf("area:%s", id))
+
+	return r.db.WithContext(ctx).Where("id = ?", id).Delete(&models.PlanningArea{}).Error
+}

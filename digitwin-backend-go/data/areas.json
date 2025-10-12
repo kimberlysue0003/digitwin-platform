@@ -1,0 +1,497 @@
+[
+  {
+    "id": "area-a-1",
+    "name": "Planning Area 1",
+    "region": "south",
+    "boundsMinLat": 1.3065084943443797,
+    "boundsMaxLat": 1.5212332147866945,
+    "boundsMinLng": 103.60134414690947,
+    "boundsMaxLng": 104.0512877859734
+  },
+  {
+    "id": "area-a-2",
+    "name": "Planning Area 2",
+    "region": "south",
+    "boundsMinLat": 1.3398335527391139,
+    "boundsMaxLat": 1.4566447617626708,
+    "boundsMinLng": 103.7759842904731,
+    "boundsMaxLng": 104.01660040884607
+  },
+  {
+    "id": "area-a-3",
+    "name": "Planning Area 3",
+    "region": "central",
+    "boundsMinLat": 1.2716172494440414,
+    "boundsMaxLat": 1.5871952925434487,
+    "boundsMinLng": 103.67747067075777,
+    "boundsMaxLng": 103.90079102551118
+  },
+  {
+    "id": "area-a-4",
+    "name": "Planning Area 4",
+    "region": "central",
+    "boundsMinLat": 1.269710647061378,
+    "boundsMaxLat": 1.4223278620745674,
+    "boundsMinLng": 103.84554438276615,
+    "boundsMaxLng": 104.11778580389873
+  },
+  {
+    "id": "area-a-5",
+    "name": "Planning Area 5",
+    "region": "north",
+    "boundsMinLat": 1.311953712762629,
+    "boundsMaxLat": 1.4314690974467736,
+    "boundsMinLng": 103.76283991979409,
+    "boundsMaxLng": 104.14047922261855
+  },
+  {
+    "id": "area-b-1",
+    "name": "Planning Area 6",
+    "region": "west",
+    "boundsMinLat": 1.2679632021198233,
+    "boundsMaxLat": 1.45723421074241,
+    "boundsMinLng": 103.82290432325675,
+    "boundsMaxLng": 103.92118036375366
+  },
+  {
+    "id": "area-b-2",
+    "name": "Planning Area 7",
+    "region": "north",
+    "boundsMinLat": 1.342928567442205,
+    "boundsMaxLat": 1.4543465562691653,
+    "boundsMinLng": 103.87565781218183,
+    "boundsMaxLng": 104.17747717831678
+  },
+  {
+    "id": "area-b-3",
+    "name": "Planning Area 8",
+    "region": "north",
+    "boundsMinLat": 1.2414781547669782,
+    "boundsMaxLat": 1.5989708652629133,
+    "boundsMinLng": 103.68647154007675,
+    "boundsMaxLng": 104.09152063411231
+  },
+  {
+    "id": "area-b-4",
+    "name": "Planning Area 9",
+    "region": "east",
+    "boundsMinLat": 1.27388606558652,
+    "boundsMaxLat": 1.4187321306073366,
+    "boundsMinLng": 103.62949383188023,
+    "boundsMaxLng": 103.92583378900584
+  },
+  {
+    "id": "area-b-5",
+    "name": "Planning Area 10",
+    "region": "south",
+    "boundsMinLat": 1.3586390407534634,
+    "boundsMaxLat": 1.4373362682768476,
+    "boundsMinLng": 103.87694008470343,
+    "boundsMaxLng": 103.91725818400285
+  },
+  {
+    "id": "area-c-1",
+    "name": "Planning Area 11",
+    "region": "central",
+    "boundsMinLat": 1.3391423377902583,
+    "boundsMaxLat": 1.4000035208670585,
+    "boundsMinLng": 103.61161613705777,
+    "boundsMaxLng": 104.15925841920439
+  },
+  {
+    "id": "area-c-2",
+    "name": "Planning Area 12",
+    "region": "east",
+    "boundsMinLat": 1.350022002524459,
+    "boundsMaxLat": 1.5449188409411012,
+    "boundsMinLng": 103.67100566410484,
+    "boundsMaxLng": 104.06652072834905
+  },
+  {
+    "id": "area-c-3",
+    "name": "Planning Area 13",
+    "region": "east",
+    "boundsMinLat": 1.227921633717219,
+    "boundsMaxLat": 1.4461296444965706,
+    "boundsMinLng": 103.80743652568796,
+    "boundsMaxLng": 104.08545572006788
+  },
+  {
+    "id": "area-c-4",
+    "name": "Planning Area 14",
+    "region": "north",
+    "boundsMinLat": 1.2299073345585978,
+    "boundsMaxLat": 1.4298132717556316,
+    "boundsMinLng": 103.61813792201326,
+    "boundsMaxLng": 103.95563913669862
+  },
+  {
+    "id": "area-c-5",
+    "name": "Planning Area 15",
+    "region": "north",
+    "boundsMinLat": 1.2509863451278336,
+    "boundsMaxLat": 1.4296770418690492,
+    "boundsMinLng": 103.82976527074611,
+    "boundsMaxLng": 104.05496067039333
+  },
+  {
+    "id": "area-d-1",
+    "name": "Planning Area 16",
+    "region": "west",
+    "boundsMinLat": 1.366322295996295,
+    "boundsMaxLat": 1.4172382150386669,
+    "boundsMinLng": 103.61072020993817,
+    "boundsMaxLng": 103.97501692909955
+  },
+  {
+    "id": "area-d-2",
+    "name": "Planning Area 17",
+    "region": "south",
+    "boundsMinLat": 1.395107764876487,
+    "boundsMaxLat": 1.514876773423943,
+    "boundsMinLng": 103.6426961651325,
+    "boundsMaxLng": 103.91748044698866
+  },
+  {
+    "id": "area-d-3",
+    "name": "Planning Area 18",
+    "region": "central",
+    "boundsMinLat": 1.37144269551174,
+    "boundsMaxLat": 1.568858456907859,
+    "boundsMinLng": 103.62332263226374,
+    "boundsMaxLng": 104.1030415916616
+  },
+  {
+    "id": "area-d-4",
+    "name": "Planning Area 19",
+    "region": "south",
+    "boundsMinLat": 1.2417301911318355,
+    "boundsMaxLat": 1.559019195068259,
+    "boundsMinLng": 103.68006071076127,
+    "boundsMaxLng": 103.94631605116264
+  },
+  {
+    "id": "area-d-5",
+    "name": "Planning Area 20",
+    "region": "west",
+    "boundsMinLat": 1.321371324342315,
+    "boundsMaxLat": 1.4802718653302145,
+    "boundsMinLng": 103.80737618092604,
+    "boundsMaxLng": 103.93623134316502
+  },
+  {
+    "id": "area-e-1",
+    "name": "Planning Area 21",
+    "region": "central",
+    "boundsMinLat": 1.298383672537865,
+    "boundsMaxLat": 1.4911780888540056,
+    "boundsMinLng": 103.67741950610137,
+    "boundsMaxLng": 103.9326423470161
+  },
+  {
+    "id": "area-e-2",
+    "name": "Planning Area 22",
+    "region": "south",
+    "boundsMinLat": 1.329923171416044,
+    "boundsMaxLat": 1.4663397917287913,
+    "boundsMinLng": 103.68615905276533,
+    "boundsMaxLng": 104.09087295824104
+  },
+  {
+    "id": "area-e-3",
+    "name": "Planning Area 23",
+    "region": "south",
+    "boundsMinLat": 1.3506077276824058,
+    "boundsMaxLat": 1.485854249939821,
+    "boundsMinLng": 103.65976911608179,
+    "boundsMaxLng": 104.16944201221241
+  },
+  {
+    "id": "area-e-4",
+    "name": "Planning Area 24",
+    "region": "north",
+    "boundsMinLat": 1.3343832044405801,
+    "boundsMaxLat": 1.479825034482655,
+    "boundsMinLng": 103.79052497419492,
+    "boundsMaxLng": 104.00194263117379
+  },
+  {
+    "id": "area-e-5",
+    "name": "Planning Area 25",
+    "region": "west",
+    "boundsMinLat": 1.2596752880844513,
+    "boundsMaxLat": 1.4478851457562754,
+    "boundsMinLng": 103.71513139276186,
+    "boundsMaxLng": 104.18624157913268
+  },
+  {
+    "id": "area-f-1",
+    "name": "Planning Area 26",
+    "region": "west",
+    "boundsMinLat": 1.3296094304913504,
+    "boundsMaxLat": 1.401123129039085,
+    "boundsMinLng": 103.62129833694526,
+    "boundsMaxLng": 104.1914794240159
+  },
+  {
+    "id": "area-f-2",
+    "name": "Planning Area 27",
+    "region": "south",
+    "boundsMinLat": 1.3053647770026255,
+    "boundsMaxLat": 1.5322100490277204,
+    "boundsMinLng": 103.62332385424538,
+    "boundsMaxLng": 104.19879326580278
+  },
+  {
+    "id": "area-f-3",
+    "name": "Planning Area 28",
+    "region": "west",
+    "boundsMinLat": 1.2371837416972484,
+    "boundsMaxLat": 1.5369058962509439,
+    "boundsMinLng": 103.86705490545478,
+    "boundsMaxLng": 104.00511863531027
+  },
+  {
+    "id": "area-f-4",
+    "name": "Planning Area 29",
+    "region": "south",
+    "boundsMinLat": 1.2263384830036108,
+    "boundsMaxLat": 1.4723311915032875,
+    "boundsMinLng": 103.74364427435518,
+    "boundsMaxLng": 104.0432497153384
+  },
+  {
+    "id": "area-f-5",
+    "name": "Planning Area 30",
+    "region": "central",
+    "boundsMinLat": 1.33253316595884,
+    "boundsMaxLat": 1.4933100682452638,
+    "boundsMinLng": 103.60579277941437,
+    "boundsMaxLng": 103.97926861721511
+  },
+  {
+    "id": "area-g-1",
+    "name": "Planning Area 31",
+    "region": "west",
+    "boundsMinLat": 1.366254264521606,
+    "boundsMaxLat": 1.436396435779338,
+    "boundsMinLng": 103.70346963285596,
+    "boundsMaxLng": 104.00372095755836
+  },
+  {
+    "id": "area-g-2",
+    "name": "Planning Area 32",
+    "region": "east",
+    "boundsMinLat": 1.2163423293671856,
+    "boundsMaxLat": 1.4177603415532885,
+    "boundsMinLng": 103.65056915862499,
+    "boundsMaxLng": 104.10217141747945
+  },
+  {
+    "id": "area-g-3",
+    "name": "Planning Area 33",
+    "region": "north",
+    "boundsMinLat": 1.3318943340089524,
+    "boundsMaxLat": 1.5815776131420827,
+    "boundsMinLng": 103.86806793126308,
+    "boundsMaxLng": 103.9341438794795
+  },
+  {
+    "id": "area-g-4",
+    "name": "Planning Area 34",
+    "region": "north",
+    "boundsMinLat": 1.2564515856413634,
+    "boundsMaxLat": 1.5767564745892069,
+    "boundsMinLng": 103.76174232221288,
+    "boundsMaxLng": 104.09025783981829
+  },
+  {
+    "id": "area-g-5",
+    "name": "Planning Area 35",
+    "region": "east",
+    "boundsMinLat": 1.3709479044489623,
+    "boundsMaxLat": 1.5985173604514973,
+    "boundsMinLng": 103.85063855440832,
+    "boundsMaxLng": 103.90789249575835
+  },
+  {
+    "id": "area-h-1",
+    "name": "Planning Area 36",
+    "region": "north",
+    "boundsMinLat": 1.3691186320012314,
+    "boundsMaxLat": 1.557476503106912,
+    "boundsMinLng": 103.61119751079042,
+    "boundsMaxLng": 104.07406078566686
+  },
+  {
+    "id": "area-h-2",
+    "name": "Planning Area 37",
+    "region": "north",
+    "boundsMinLat": 1.3828633591597885,
+    "boundsMaxLat": 1.4001813803459568,
+    "boundsMinLng": 103.84891433393545,
+    "boundsMaxLng": 104.07208095581984
+  },
+  {
+    "id": "area-h-3",
+    "name": "Planning Area 38",
+    "region": "east",
+    "boundsMinLat": 1.227497126687777,
+    "boundsMaxLat": 1.460086507686287,
+    "boundsMinLng": 103.80475857575149,
+    "boundsMaxLng": 104.0601590782827
+  },
+  {
+    "id": "area-h-4",
+    "name": "Planning Area 39",
+    "region": "central",
+    "boundsMinLat": 1.291656753125917,
+    "boundsMaxLat": 1.4012714878750627,
+    "boundsMinLng": 103.68357901183462,
+    "boundsMaxLng": 103.96599562745092
+  },
+  {
+    "id": "area-h-5",
+    "name": "Planning Area 40",
+    "region": "east",
+    "boundsMinLat": 1.2764445251312981,
+    "boundsMaxLat": 1.4128859503487952,
+    "boundsMinLng": 103.70670747160848,
+    "boundsMaxLng": 103.95761665622973
+  },
+  {
+    "id": "area-i-1",
+    "name": "Planning Area 41",
+    "region": "south",
+    "boundsMinLat": 1.2724374741329576,
+    "boundsMaxLat": 1.5110509007282702,
+    "boundsMinLng": 103.7231509709096,
+    "boundsMaxLng": 104.17337310516122
+  },
+  {
+    "id": "area-i-2",
+    "name": "Planning Area 42",
+    "region": "east",
+    "boundsMinLat": 1.3889154392224619,
+    "boundsMaxLat": 1.4223674810531244,
+    "boundsMinLng": 103.66733495575934,
+    "boundsMaxLng": 104.02752935714516
+  },
+  {
+    "id": "area-i-3",
+    "name": "Planning Area 43",
+    "region": "north",
+    "boundsMinLat": 1.2464057306788912,
+    "boundsMaxLat": 1.4901997198058055,
+    "boundsMinLng": 103.78055968834164,
+    "boundsMaxLng": 104.07408485979526
+  },
+  {
+    "id": "area-i-4",
+    "name": "Planning Area 44",
+    "region": "north",
+    "boundsMinLat": 1.2399178504403088,
+    "boundsMaxLat": 1.4885810161490902,
+    "boundsMinLng": 103.69160942011563,
+    "boundsMaxLng": 104.13287260448209
+  },
+  {
+    "id": "area-i-5",
+    "name": "Planning Area 45",
+    "region": "north",
+    "boundsMinLat": 1.3279126217462973,
+    "boundsMaxLat": 1.4153275937729992,
+    "boundsMinLng": 103.61330245968273,
+    "boundsMaxLng": 104.02858550997841
+  },
+  {
+    "id": "area-j-1",
+    "name": "Planning Area 46",
+    "region": "south",
+    "boundsMinLat": 1.2931722519772808,
+    "boundsMaxLat": 1.416520882146072,
+    "boundsMinLng": 103.80985144918687,
+    "boundsMaxLng": 104.10387281344437
+  },
+  {
+    "id": "area-j-2",
+    "name": "Planning Area 47",
+    "region": "north",
+    "boundsMinLat": 1.314398846236208,
+    "boundsMaxLat": 1.4550830015269078,
+    "boundsMinLng": 103.88752791160331,
+    "boundsMaxLng": 104.0804427205765
+  },
+  {
+    "id": "area-j-3",
+    "name": "Planning Area 48",
+    "region": "west",
+    "boundsMinLat": 1.3309063864928419,
+    "boundsMaxLat": 1.5834853348474014,
+    "boundsMinLng": 103.68914196508834,
+    "boundsMaxLng": 104.18213578472621
+  },
+  {
+    "id": "area-j-4",
+    "name": "Planning Area 49",
+    "region": "west",
+    "boundsMinLat": 1.280116854225492,
+    "boundsMaxLat": 1.5416662974692676,
+    "boundsMinLng": 103.81850960539002,
+    "boundsMaxLng": 104.16591269715569
+  },
+  {
+    "id": "area-j-5",
+    "name": "Planning Area 50",
+    "region": "south",
+    "boundsMinLat": 1.281467798320997,
+    "boundsMaxLat": 1.5553828294971075,
+    "boundsMinLng": 103.79554745077249,
+    "boundsMaxLng": 104.08927414739603
+  },
+  {
+    "id": "area-k-1",
+    "name": "Planning Area 51",
+    "region": "west",
+    "boundsMinLat": 1.2872938443381794,
+    "boundsMaxLat": 1.5952078920039463,
+    "boundsMinLng": 103.66250918999512,
+    "boundsMaxLng": 103.97446534452124
+  },
+  {
+    "id": "area-k-2",
+    "name": "Planning Area 52",
+    "region": "south",
+    "boundsMinLat": 1.215918238235144,
+    "boundsMaxLat": 1.43031036952187,
+    "boundsMinLng": 103.62533050130966,
+    "boundsMaxLng": 104.16766900446564
+  },
+  {
+    "id": "area-k-3",
+    "name": "Planning Area 53",
+    "region": "central",
+    "boundsMinLat": 1.305074774463984,
+    "boundsMaxLat": 1.5695881674644656,
+    "boundsMinLng": 103.770879702839,
+    "boundsMaxLng": 104.07248241397441
+  },
+  {
+    "id": "area-k-4",
+    "name": "Planning Area 54",
+    "region": "north",
+    "boundsMinLat": 1.2904878501162012,
+    "boundsMaxLat": 1.464980537103089,
+    "boundsMinLng": 103.66910894280673,
+    "boundsMaxLng": 104.0537556618752
+  },
+  {
+    "id": "area-k-5",
+    "name": "Planning Area 55",
+    "region": "central",
+    "boundsMinLat": 1.3749204233791312,
+    "boundsMaxLat": 1.5290815940618228,
+    "boundsMinLng": 103.71617806321001,
+    "boundsMaxLng": 104.04379375232584
+  }
+]

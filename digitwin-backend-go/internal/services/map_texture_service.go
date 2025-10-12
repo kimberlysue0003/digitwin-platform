@@ -78,7 +78,7 @@ func (s *MapTextureService) CreateMapTexture(ctx context.Context, mapTexture *mo
 	// Check if file exists
 	fullPath := filepath.Join(s.staticPath, mapTexture.PNGFilePath)
 	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
-		return errors.NewValidationError(fmt.Sprintf("PNG file does not exist: %s", mapTexture.PNGFilePath))
+		return errors.NewSimpleValidationError(fmt.Sprintf("PNG file does not exist: %s", mapTexture.PNGFilePath))
 	}
 
 	// Check if map texture already exists for this area
@@ -87,7 +87,7 @@ func (s *MapTextureService) CreateMapTexture(ctx context.Context, mapTexture *mo
 		return errors.NewDatabaseError("failed to check existing map texture", err)
 	}
 	if existing != nil {
-		return errors.NewValidationError(fmt.Sprintf("map texture already exists for area %s", mapTexture.PlanningAreaID))
+		return errors.NewSimpleValidationError(fmt.Sprintf("map texture already exists for area %s", mapTexture.PlanningAreaID))
 	}
 
 	if err := s.mapTextureRepo.Create(ctx, mapTexture); err != nil {
@@ -121,7 +121,7 @@ func (s *MapTextureService) UpdateMapTexture(ctx context.Context, mapTexture *mo
 	if mapTexture.PNGFilePath != "" {
 		fullPath := filepath.Join(s.staticPath, mapTexture.PNGFilePath)
 		if _, err := os.Stat(fullPath); os.IsNotExist(err) {
-			return errors.NewValidationError(fmt.Sprintf("PNG file does not exist: %s", mapTexture.PNGFilePath))
+			return errors.NewSimpleValidationError(fmt.Sprintf("PNG file does not exist: %s", mapTexture.PNGFilePath))
 		}
 	}
 
@@ -195,7 +195,7 @@ func (s *MapTextureService) ValidateMapTextureBounds(ctx context.Context, areaID
 		abs64(area.BoundsMaxLat-mapTexture.BoundsMaxLat) > tolerance ||
 		abs64(area.BoundsMinLng-mapTexture.BoundsMinLng) > tolerance ||
 		abs64(area.BoundsMaxLng-mapTexture.BoundsMaxLng) > tolerance {
-		return errors.NewValidationError(fmt.Sprintf("map texture bounds do not match planning area bounds for %s", areaID))
+		return errors.NewSimpleValidationError(fmt.Sprintf("map texture bounds do not match planning area bounds for %s", areaID))
 	}
 
 	return nil

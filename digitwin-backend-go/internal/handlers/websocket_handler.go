@@ -58,7 +58,7 @@ func (h *WebSocketHandler) HandleWebSocket(c *gin.Context) {
 		Conn:       conn,
 		Send:       make(chan []byte, 256),
 		AreaID:     areaID,
-		disconnect: make(chan struct{}),
+		Disconnect: make(chan struct{}),
 	}
 
 	// Register client

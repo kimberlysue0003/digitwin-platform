@@ -113,13 +113,13 @@ func (s *BuildingService) CreateBuildings(ctx context.Context, buildings []model
 	// Validate all buildings
 	for i, building := range buildings {
 		if building.PlanningAreaID == "" {
-			return errors.NewValidationError(fmt.Sprintf("building[%d]: planning area ID cannot be empty", i))
+			return errors.NewSimpleValidationError(fmt.Sprintf("building[%d]: planning area ID cannot be empty", i))
 		}
 		if len(building.Footprint) < 3 {
-			return errors.NewValidationError(fmt.Sprintf("building[%d]: footprint must have at least 3 points", i))
+			return errors.NewSimpleValidationError(fmt.Sprintf("building[%d]: footprint must have at least 3 points", i))
 		}
 		if building.Height <= 0 {
-			return errors.NewValidationError(fmt.Sprintf("building[%d]: height must be positive", i))
+			return errors.NewSimpleValidationError(fmt.Sprintf("building[%d]: height must be positive", i))
 		}
 	}
 
@@ -219,8 +219,8 @@ func calculatePolygonArea(points models.Footprint) float64 {
 	var area float64
 	for i := 0; i < len(points); i++ {
 		j := (i + 1) % len(points)
-		area += points[i].X * points[j].Y
-		area -= points[j].X * points[i].Y
+		area += points[i].X * points[j].Z
+		area -= points[j].X * points[i].Z
 	}
 
 	return abs(area) / 2.0

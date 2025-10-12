@@ -33,7 +33,7 @@ func (s *StreamlineService) GetStreamlinesByAreaAndDirection(ctx context.Context
 		"S": true, "SW": true, "W": true, "NW": true,
 	}
 	if direction != "" && !validDirections[direction] {
-		return nil, errors.NewValidationError("invalid direction: must be one of N, NE, E, SE, S, SW, W, NW")
+		return nil, errors.NewSimpleValidationError("invalid direction: must be one of N, NE, E, SE, S, SW, W, NW")
 	}
 
 	// Verify area exists
@@ -90,13 +90,13 @@ func (s *StreamlineService) CreateStreamlines(ctx context.Context, streamlines [
 	// Validate all streamlines
 	for i, streamline := range streamlines {
 		if streamline.PlanningAreaID == "" {
-			return errors.NewValidationError(fmt.Sprintf("streamline[%d]: planning area ID cannot be empty", i))
+			return errors.NewSimpleValidationError(fmt.Sprintf("streamline[%d]: planning area ID cannot be empty", i))
 		}
 		if !validDirections[streamline.Direction] {
-			return errors.NewValidationError(fmt.Sprintf("streamline[%d]: invalid direction %s", i, streamline.Direction))
+			return errors.NewSimpleValidationError(fmt.Sprintf("streamline[%d]: invalid direction %s", i, streamline.Direction))
 		}
 		if len(streamline.Points) < 2 {
-			return errors.NewValidationError(fmt.Sprintf("streamline[%d]: must have at least 2 points", i))
+			return errors.NewSimpleValidationError(fmt.Sprintf("streamline[%d]: must have at least 2 points", i))
 		}
 	}
 

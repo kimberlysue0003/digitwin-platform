@@ -55,7 +55,7 @@ func (s *AreaService) GetAreasByRegion(ctx context.Context, region string) ([]mo
 	}
 
 	if !validRegions[region] {
-		return nil, errors.NewValidationError("invalid region: must be one of central, north, south, east, west")
+		return nil, errors.NewSimpleValidationError("invalid region: must be one of central, north, south, east, west")
 	}
 
 	areas, err := s.areaRepo.GetByRegion(ctx, region)
@@ -70,7 +70,7 @@ func (s *AreaService) GetAreasByRegion(ctx context.Context, region string) ([]mo
 func (s *AreaService) CreateArea(ctx context.Context, area *models.PlanningArea) error {
 	// Validate required fields
 	if area.ID == "" || area.Name == "" || area.Region == "" {
-		return errors.NewValidationError("ID, name, and region are required")
+		return errors.NewSimpleValidationError("ID, name, and region are required")
 	}
 
 	// Validate bounds

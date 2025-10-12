@@ -1,0 +1,82 @@
+[
+  {
+    "planningAreaId": "area-a-1",
+    "pngFilePath": "textures/area-a-1.png",
+    "boundsMinLat": 1.3065084943443797,
+    "boundsMaxLat": 1.5212332147866945,
+    "boundsMinLng": 103.60134414690947,
+    "boundsMaxLng": 104.0512877859734
+  },
+  {
+    "planningAreaId": "area-a-2",
+    "pngFilePath": "textures/area-a-2.png",
+    "boundsMinLat": 1.3398335527391139,
+    "boundsMaxLat": 1.4566447617626708,
+    "boundsMinLng": 103.7759842904731,
+    "boundsMaxLng": 104.01660040884607
+  },
+  {
+    "planningAreaId": "area-a-3",
+    "pngFilePath": "textures/area-a-3.png",
+    "boundsMinLat": 1.2716172494440414,
+    "boundsMaxLat": 1.5871952925434487,
+    "boundsMinLng": 103.67747067075777,
+    "boundsMaxLng": 103.90079102551118
+  },
+  {
+    "planningAreaId": "area-a-4",
+    "pngFilePath": "textures/area-a-4.png",
+    "boundsMinLat": 1.269710647061378,
+    "boundsMaxLat": 1.4223278620745674,
+    "boundsMinLng": 103.84554438276615,
+    "boundsMaxLng": 104.11778580389873
+  },
+  {
+    "planningAreaId": "area-a-5",
+    "pngFilePath": "textures/area-a-5.png",
+    "boundsMinLat": 1.311953712762629,
+    "boundsMaxLat": 1.4314690974467736,
+    "boundsMinLng": 103.76283991979409,
+    "boundsMaxLng": 104.14047922261855
+  },
+  {
+    "planningAreaId": "area-b-1",
+    "pngFilePath": "textures/area-b-1.png",
+    "boundsMinLat": 1.2679632021198233,
+    "boundsMaxLat": 1.45723421074241,
+    "boundsMinLng": 103.82290432325675,
+    "boundsMaxLng": 103.92118036375366
+  },
+  {
+    "planningAreaId": "area-b-2",
+    "pngFilePath": "textures/area-b-2.png",
+    "boundsMinLat": 1.342928567442205,
+    "boundsMaxLat": 1.4543465562691653,
+    "boundsMinLng": 103.87565781218183,
+    "boundsMaxLng": 104.17747717831678
+  },
+  {
+    "planningAreaId": "area-b-3",
+    "pngFilePath": "textures/area-b-3.png",
+    "boundsMinLat": 1.2414781547669782,
+    "boundsMaxLat": 1.5989708652629133,
+    "boundsMinLng": 103.68647154007675,
+    "boundsMaxLng": 104.09152063411231
+  },
+  {
+    "planningAreaId": "area-b-4",
+    "pngFilePath": "textures/area-b-4.png",
+    "boundsMinLat": 1.27388606558652,
+    "boundsMaxLat": 1.4187321306073366,
+    "boundsMinLng": 103.62949383188023,
+    "boundsMaxLng": 103.92583378900584
+  },
+  {
+    "planningAreaId": "area-b-5",
+    "pngFilePath": "textures/area-b-5.png",
+    "boundsMinLat": 1.3586390407534634,
+    "boundsMaxLat": 1.4373362682768476,
+    "boundsMinLng": 103.87694008470343,
+    "boundsMaxLng": 103.91725818400285
+  }
+]
