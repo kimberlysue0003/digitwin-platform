@@ -9,7 +9,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 
-	"github.com/kimberlysue0003/digitwin-backend-go/internal/models"
+	"digitwin-backend/internal/models"
 )
 
 // StreamlineRepository handles data access for wind streamlines

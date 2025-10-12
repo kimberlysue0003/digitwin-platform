@@ -30,7 +30,7 @@ func (s *AreaService) GetAllAreas(ctx context.Context) ([]models.PlanningArea, e
 // GetAreaByID retrieves a single planning area by ID
 func (s *AreaService) GetAreaByID(ctx context.Context, areaID string) (*models.PlanningArea, error) {
 	if areaID == "" {
-		return nil, errors.NewValidationError("area ID cannot be empty")
+		return nil, errors.NewSimpleValidationError("area ID cannot be empty")
 	}
 
 	area, err := s.areaRepo.GetByID(ctx, areaID)
@@ -75,7 +75,7 @@ func (s *AreaService) CreateArea(ctx context.Context, area *models.PlanningArea)
 
 	// Validate bounds
 	if area.BoundsMinLat >= area.BoundsMaxLat || area.BoundsMinLng >= area.BoundsMaxLng {
-		return errors.NewValidationError("invalid bounds: min must be less than max")
+		return errors.NewSimpleValidationError("invalid bounds: min must be less than max")
 	}
 
 	if err := s.areaRepo.Create(ctx, area); err != nil {
@@ -88,7 +88,7 @@ func (s *AreaService) CreateArea(ctx context.Context, area *models.PlanningArea)
 // UpdateArea updates an existing planning area
 func (s *AreaService) UpdateArea(ctx context.Context, area *models.PlanningArea) error {
 	if area.ID == "" {
-		return errors.NewValidationError("area ID cannot be empty")
+		return errors.NewSimpleValidationError("area ID cannot be empty")
 	}
 
 	// Verify area exists
@@ -110,7 +110,7 @@ func (s *AreaService) UpdateArea(ctx context.Context, area *models.PlanningArea)
 // DeleteArea deletes a planning area
 func (s *AreaService) DeleteArea(ctx context.Context, areaID string) error {
 	if areaID == "" {
-		return errors.NewValidationError("area ID cannot be empty")
+		return errors.NewSimpleValidationError("area ID cannot be empty")
 	}
 
 	// Verify area exists

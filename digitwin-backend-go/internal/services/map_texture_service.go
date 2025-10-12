@@ -28,7 +28,7 @@ func NewMapTextureService(mapTextureRepo *repositories.MapTextureRepository, are
 // GetMapTextureByAreaID retrieves map texture metadata for a planning area
 func (s *MapTextureService) GetMapTextureByAreaID(ctx context.Context, areaID string) (*models.MapTexture, error) {
 	if areaID == "" {
-		return nil, errors.NewValidationError("area ID cannot be empty")
+		return nil, errors.NewSimpleValidationError("area ID cannot be empty")
 	}
 
 	// Verify area exists
@@ -55,10 +55,10 @@ func (s *MapTextureService) GetMapTextureByAreaID(ctx context.Context, areaID st
 func (s *MapTextureService) CreateMapTexture(ctx context.Context, mapTexture *models.MapTexture) error {
 	// Validate required fields
 	if mapTexture.PlanningAreaID == "" {
-		return errors.NewValidationError("planning area ID cannot be empty")
+		return errors.NewSimpleValidationError("planning area ID cannot be empty")
 	}
 	if mapTexture.PNGFilePath == "" {
-		return errors.NewValidationError("PNG file path cannot be empty")
+		return errors.NewSimpleValidationError("PNG file path cannot be empty")
 	}
 
 	// Verify area exists
@@ -72,7 +72,7 @@ func (s *MapTextureService) CreateMapTexture(ctx context.Context, mapTexture *mo
 
 	// Validate bounds
 	if mapTexture.BoundsMinLat >= mapTexture.BoundsMaxLat || mapTexture.BoundsMinLng >= mapTexture.BoundsMaxLng {
-		return errors.NewValidationError("invalid bounds: min must be less than max")
+		return errors.NewSimpleValidationError("invalid bounds: min must be less than max")
 	}
 
 	// Check if file exists
@@ -100,7 +100,7 @@ func (s *MapTextureService) CreateMapTexture(ctx context.Context, mapTexture *mo
 // UpdateMapTexture updates an existing map texture
 func (s *MapTextureService) UpdateMapTexture(ctx context.Context, mapTexture *models.MapTexture) error {
 	if mapTexture.PlanningAreaID == "" {
-		return errors.NewValidationError("planning area ID cannot be empty")
+		return errors.NewSimpleValidationError("planning area ID cannot be empty")
 	}
 
 	// Verify map texture exists
@@ -114,7 +114,7 @@ func (s *MapTextureService) UpdateMapTexture(ctx context.Context, mapTexture *mo
 
 	// Validate bounds
 	if mapTexture.BoundsMinLat >= mapTexture.BoundsMaxLat || mapTexture.BoundsMinLng >= mapTexture.BoundsMaxLng {
-		return errors.NewValidationError("invalid bounds: min must be less than max")
+		return errors.NewSimpleValidationError("invalid bounds: min must be less than max")
 	}
 
 	// Check if file exists (if path is being updated)
@@ -135,7 +135,7 @@ func (s *MapTextureService) UpdateMapTexture(ctx context.Context, mapTexture *mo
 // DeleteMapTexture deletes a map texture
 func (s *MapTextureService) DeleteMapTexture(ctx context.Context, areaID string) error {
 	if areaID == "" {
-		return errors.NewValidationError("area ID cannot be empty")
+		return errors.NewSimpleValidationError("area ID cannot be empty")
 	}
 
 	// Verify map texture exists

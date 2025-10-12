@@ -1,4 +1,4 @@
-module github.com/kimberlysue0003/digitwin-backend-go
+module digitwin-backend
 
 go 1.25.2
 

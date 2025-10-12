@@ -24,7 +24,7 @@ func NewBuildingService(buildingRepo *repositories.BuildingRepository, areaRepo 
 // GetBuildingsByAreaID retrieves all buildings for a planning area
 func (s *BuildingService) GetBuildingsByAreaID(ctx context.Context, areaID string) ([]models.Building, error) {
 	if areaID == "" {
-		return nil, errors.NewValidationError("area ID cannot be empty")
+		return nil, errors.NewSimpleValidationError("area ID cannot be empty")
 	}
 
 	// Verify area exists
@@ -47,7 +47,7 @@ func (s *BuildingService) GetBuildingsByAreaID(ctx context.Context, areaID strin
 // GetBuildingChunkInfo retrieves chunk information for a planning area
 func (s *BuildingService) GetBuildingChunkInfo(ctx context.Context, areaID string) (*repositories.ChunkInfo, error) {
 	if areaID == "" {
-		return nil, errors.NewValidationError("area ID cannot be empty")
+		return nil, errors.NewSimpleValidationError("area ID cannot be empty")
 	}
 
 	// Verify area exists
@@ -70,11 +70,11 @@ func (s *BuildingService) GetBuildingChunkInfo(ctx context.Context, areaID strin
 // GetBuildingChunk retrieves a specific chunk of buildings
 func (s *BuildingService) GetBuildingChunk(ctx context.Context, areaID string, chunkIndex int) ([]models.Building, error) {
 	if areaID == "" {
-		return nil, errors.NewValidationError("area ID cannot be empty")
+		return nil, errors.NewSimpleValidationError("area ID cannot be empty")
 	}
 
 	if chunkIndex < 0 {
-		return nil, errors.NewValidationError("chunk index must be non-negative")
+		return nil, errors.NewSimpleValidationError("chunk index must be non-negative")
 	}
 
 	// Verify area exists
@@ -93,7 +93,7 @@ func (s *BuildingService) GetBuildingChunk(ctx context.Context, areaID string, c
 	}
 
 	if chunkIndex >= chunkInfo.TotalChunks {
-		return nil, errors.NewValidationError(fmt.Sprintf("chunk index %d out of range (total chunks: %d)", chunkIndex, chunkInfo.TotalChunks))
+		return nil, errors.NewSimpleValidationError(fmt.Sprintf("chunk index %d out of range (total chunks: %d)", chunkIndex, chunkInfo.TotalChunks))
 	}
 
 	buildings, err := s.buildingRepo.GetChunk(ctx, areaID, chunkIndex)
@@ -107,7 +107,7 @@ func (s *BuildingService) GetBuildingChunk(ctx context.Context, areaID string, c
 // CreateBuildings creates multiple buildings in a batch
 func (s *BuildingService) CreateBuildings(ctx context.Context, buildings []models.Building) error {
 	if len(buildings) == 0 {
-		return errors.NewValidationError("no buildings to create")
+		return errors.NewSimpleValidationError("no buildings to create")
 	}
 
 	// Validate all buildings
@@ -150,7 +150,7 @@ func (s *BuildingService) CreateBuildings(ctx context.Context, buildings []model
 // DeleteBuildingsByAreaID deletes all buildings for a planning area
 func (s *BuildingService) DeleteBuildingsByAreaID(ctx context.Context, areaID string) error {
 	if areaID == "" {
-		return errors.NewValidationError("area ID cannot be empty")
+		return errors.NewSimpleValidationError("area ID cannot be empty")
 	}
 
 	if err := s.buildingRepo.DeleteByAreaID(ctx, areaID); err != nil {
@@ -163,7 +163,7 @@ func (s *BuildingService) DeleteBuildingsByAreaID(ctx context.Context, areaID st
 // GetBuildingStats returns statistics about buildings
 func (s *BuildingService) GetBuildingStats(ctx context.Context, areaID string) (map[string]interface{}, error) {
 	if areaID == "" {
-		return nil, errors.NewValidationError("area ID cannot be empty")
+		return nil, errors.NewSimpleValidationError("area ID cannot be empty")
 	}
 
 	buildings, err := s.buildingRepo.GetByAreaID(ctx, areaID)

@@ -24,7 +24,7 @@ func NewStreamlineService(streamlineRepo *repositories.StreamlineRepository, are
 // GetStreamlinesByAreaAndDirection retrieves streamlines for a specific area and direction
 func (s *StreamlineService) GetStreamlinesByAreaAndDirection(ctx context.Context, areaID string, direction string) ([]models.WindStreamline, error) {
 	if areaID == "" {
-		return nil, errors.NewValidationError("area ID cannot be empty")
+		return nil, errors.NewSimpleValidationError("area ID cannot be empty")
 	}
 
 	// Validate direction
@@ -56,7 +56,7 @@ func (s *StreamlineService) GetStreamlinesByAreaAndDirection(ctx context.Context
 // GetAllStreamlinesByArea retrieves all streamlines for a planning area
 func (s *StreamlineService) GetAllStreamlinesByArea(ctx context.Context, areaID string) ([]models.WindStreamline, error) {
 	if areaID == "" {
-		return nil, errors.NewValidationError("area ID cannot be empty")
+		return nil, errors.NewSimpleValidationError("area ID cannot be empty")
 	}
 
 	// Verify area exists
@@ -79,7 +79,7 @@ func (s *StreamlineService) GetAllStreamlinesByArea(ctx context.Context, areaID 
 // CreateStreamlines creates multiple streamlines in a batch
 func (s *StreamlineService) CreateStreamlines(ctx context.Context, streamlines []models.WindStreamline) error {
 	if len(streamlines) == 0 {
-		return errors.NewValidationError("no streamlines to create")
+		return errors.NewSimpleValidationError("no streamlines to create")
 	}
 
 	validDirections := map[string]bool{
@@ -127,7 +127,7 @@ func (s *StreamlineService) CreateStreamlines(ctx context.Context, streamlines [
 // DeleteStreamlinesByAreaID deletes all streamlines for a planning area
 func (s *StreamlineService) DeleteStreamlinesByAreaID(ctx context.Context, areaID string) error {
 	if areaID == "" {
-		return errors.NewValidationError("area ID cannot be empty")
+		return errors.NewSimpleValidationError("area ID cannot be empty")
 	}
 
 	if err := s.streamlineRepo.DeleteByAreaID(ctx, areaID); err != nil {
@@ -140,7 +140,7 @@ func (s *StreamlineService) DeleteStreamlinesByAreaID(ctx context.Context, areaI
 // GetStreamlineStats returns statistics about streamlines
 func (s *StreamlineService) GetStreamlineStats(ctx context.Context, areaID string) (map[string]interface{}, error) {
 	if areaID == "" {
-		return nil, errors.NewValidationError("area ID cannot be empty")
+		return nil, errors.NewSimpleValidationError("area ID cannot be empty")
 	}
 
 	streamlines, err := s.streamlineRepo.GetByAreaAndDirection(ctx, areaID, "")

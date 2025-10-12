@@ -32,6 +32,11 @@ func NewValidationError(field, message string) *ValidationError {
 	return &ValidationError{Field: field, Message: message}
 }
 
+// NewSimpleValidationError creates a validation error with just a message
+func NewSimpleValidationError(message string) error {
+	return fmt.Errorf("validation error: %s", message)
+}
+
 // DatabaseError represents a database operation error
 type DatabaseError struct {
 	Operation string
