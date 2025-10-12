@@ -31,11 +31,23 @@ func SuccessWithMessage(c *gin.Context, message string, data interface{}) {
 	})
 }
 
+// SuccessWithStatus sends a successful JSON response with custom status code
+func SuccessWithStatus(c *gin.Context, status int, data interface{}) {
+	c.JSON(status, Response{
+		Success: true,
+		Data:    data,
+	})
+}
+
 // Error sends an error JSON response
-func Error(c *gin.Context, status int, message string) {
+func Error(c *gin.Context, status int, err error) {
+	errorMsg := ""
+	if err != nil {
+		errorMsg = err.Error()
+	}
 	c.JSON(status, Response{
 		Success: false,
-		Error:   message,
+		Error:   errorMsg,
 	})
 }
 
