@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DigitWin WebSocket Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .status.connected {
+            background: #10b981;
+        }
+
+        .status.disconnected {
+            background: #ef4444;
+        }
+
+        .controls {
+            padding: 30px;
+            background: #f9fafb;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            align-items: center;
+        }
+
+        .control-group label {
+            min-width: 100px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        input, button {
+            padding: 10px 20px;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        input {
+            flex: 1;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        button:hover {
+            background: #5568d3;
+        }
+
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .button-danger {
+            background: #ef4444;
+        }
+
+        .button-danger:hover {
+            background: #dc2626;
+        }
+
+        .stats {
+            padding: 20px 30px;
+            background: #f3f4f6;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            gap: 30px;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #6b7280;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #111827;
+            margin-top: 5px;
+        }
+
+        .messages {
+            padding: 30px;
+            height: 500px;
+            overflow-y: auto;
+            background: white;
+        }
+
+        .message {
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border-left: 4px solid;
+            font-size: 14px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.connected {
+            background: #d1fae5;
+            border-color: #10b981;
+        }
+
+        .message.environment_update {
+            background: #dbeafe;
+            border-color: #3b82f6;
+        }
+
+        .message.subscribed {
+            background: #fef3c7;
+            border-color: #f59e0b;
+        }
+
+        .message.error {
+            background: #fee2e2;
+            border-color: #ef4444;
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .message-type {
+            color: #374151;
+        }
+
+        .message-time {
+            color: #6b7280;
+            font-size: 12px;
+        }
+
+        .message-data {
+            font-family: 'Courier New', monospace;
+            background: rgba(0, 0, 0, 0.05);
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 DigitWin WebSocket Test</h1>
+            <div class="status disconnected" id="status">Disconnected</div>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>WebSocket URL:</label>
+                <input type="text" id="wsUrl" value="ws://localhost:8080/ws" />
+            </div>
+            <div class="control-group">
+                <label>Area ID:</label>
+                <input type="text" id="areaId" placeholder="e.g., area-a-1" />
+            </div>
+            <div class="control-group">
+                <button id="connectBtn" onclick="connect()">Connect</button>
+                <button id="disconnectBtn" onclick="disconnect()" disabled class="button-danger">Disconnect</button>
+                <button id="subscribeBtn" onclick="subscribe()" disabled>Subscribe to Area</button>
+                <button id="clearBtn" onclick="clearMessages()">Clear Messages</button>
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-item">
+                <span class="stat-label">Messages Received</span>
+                <span class="stat-value" id="msgCount">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Connection Time</span>
+                <span class="stat-value" id="connTime">--</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Last Update</span>
+                <span class="stat-value" id="lastUpdate">Never</span>
+            </div>
+        </div>
+
+        <div class="messages" id="messages"></div>
+    </div>
+
+    <script>
+        let ws = null;
+        let messageCount = 0;
+        let connectTime = null;
+
+        function updateStatus(connected) {
+            const status = document.getElementById('status');
+            const connectBtn = document.getElementById('connectBtn');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+            const subscribeBtn = document.getElementById('subscribeBtn');
+
+            if (connected) {
+                status.textContent = 'Connected';
+                status.className = 'status connected';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                subscribeBtn.disabled = false;
+            } else {
+                status.textContent = 'Disconnected';
+                status.className = 'status disconnected';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                subscribeBtn.disabled = true;
+            }
+        }
+
+        function addMessage(type, data) {
+            messageCount++;
+            document.getElementById('msgCount').textContent = messageCount;
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+
+            const messages = document.getElementById('messages');
+            const msg = document.createElement('div');
+            msg.className = `message ${type}`;
+
+            const time = new Date().toLocaleTimeString();
+            msg.innerHTML = `
+                <div class="message-header">
+                    <span class="message-type">${type}</span>
+                    <span class="message-time">${time}</span>
+                </div>
+                <div class="message-data">${JSON.stringify(data, null, 2)}</div>
+            `;
+
+            messages.insertBefore(msg, messages.firstChild);
+
+            // Keep only last 50 messages
+            while (messages.children.length > 50) {
+                messages.removeChild(messages.lastChild);
+            }
+        }
+
+        function connect() {
+            const url = document.getElementById('wsUrl').value;
+            const areaId = document.getElementById('areaId').value;
+
+            const fullUrl = areaId ? `${url}?areaId=${areaId}` : url;
+
+            ws = new WebSocket(fullUrl);
+
+            ws.onopen = () => {
+                console.log('WebSocket connected');
+                updateStatus(true);
+                connectTime = new Date();
+                document.getElementById('connTime').textContent = connectTime.toLocaleTimeString();
+                addMessage('connected', { message: 'Connected to server' });
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    addMessage(data.type, data.data);
+                } catch (e) {
+                    console.error('Failed to parse message:', e);
+                }
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                addMessage('error', { message: 'Connection error' });
+            };
+
+            ws.onclose = () => {
+                console.log('WebSocket disconnected');
+                updateStatus(false);
+                document.getElementById('connTime').textContent = '--';
+                addMessage('disconnected', { message: 'Disconnected from server' });
+                ws = null;
+            };
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+            }
+        }
+
+        function subscribe() {
+            const areaId = document.getElementById('areaId').value;
+            if (!areaId) {
+                alert('Please enter an Area ID');
+                return;
+            }
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'subscribe',
+                    areaId: areaId
+                }));
+            }
+        }
+
+        function clearMessages() {
+            document.getElementById('messages').innerHTML = '';
+            messageCount = 0;
+            document.getElementById('msgCount').textContent = '0';
+        }
+
+        // Auto-connect on load (optional)
+        // window.onload = connect;
+    </script>
+</body>
+</html>

@@ -16,6 +16,7 @@ type Router struct {
 	streamlineHandler *handlers.StreamlineHandler
 	mapTextureHandler *handlers.MapTextureHandler
 	healthHandler     *handlers.HealthHandler
+	wsHandler         *handlers.WebSocketHandler
 	logger            *zap.Logger
 }
 
@@ -25,6 +26,7 @@ func NewRouter(
 	streamlineHandler *handlers.StreamlineHandler,
 	mapTextureHandler *handlers.MapTextureHandler,
 	healthHandler *handlers.HealthHandler,
+	wsHandler *handlers.WebSocketHandler,
 	logger *zap.Logger,
 ) *Router {
 	return &Router{
@@ -33,6 +35,7 @@ func NewRouter(
 		streamlineHandler: streamlineHandler,
 		mapTextureHandler: mapTextureHandler,
 		healthHandler:     healthHandler,
+		wsHandler:         wsHandler,
 		logger:            logger,
 	}
 }
@@ -52,6 +55,9 @@ func (r *Router) Setup(engine *gin.Engine) {
 	engine.GET("/health", r.healthHandler.HealthCheck)
 	engine.GET("/ready", r.healthHandler.ReadyCheck)
 	engine.GET("/live", r.healthHandler.LiveCheck)
+
+	// WebSocket endpoint (no /api prefix, no middleware)
+	engine.GET("/ws", r.wsHandler.HandleWebSocket)
 
 	// API routes
 	api := engine.Group("/api")
@@ -97,6 +103,12 @@ func (r *Router) Setup(engine *gin.Engine) {
 			mapTextures.POST("", r.mapTextureHandler.CreateMapTexture)
 			mapTextures.PUT("/:areaId", r.mapTextureHandler.UpdateMapTexture)
 			mapTextures.DELETE("/:areaId", r.mapTextureHandler.DeleteMapTexture)
+		}
+
+		// WebSocket Stats
+		ws := api.Group("/ws")
+		{
+			ws.GET("/stats", r.wsHandler.GetWebSocketStats)
 		}
 	}
 }
