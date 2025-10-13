@@ -51,10 +51,10 @@ export function BuildingsLayer() {
   useEffect(() => {
     setLoading(true);
 
-    // Load building data from JSON file
+    // Load building data from backend API
     const loadBuildings = async () => {
       try {
-        const response = await fetch(`/buildings/${selectedPlanningArea}.json`);
+        const response = await fetch(`http://localhost:8080/api/buildings/${selectedPlanningArea}`);
         if (!response.ok) {
           console.warn(`No building data found for ${selectedPlanningArea}`);
           setBuildings([]);
@@ -62,9 +62,17 @@ export function BuildingsLayer() {
           return;
         }
 
-        const data: BuildingData = await response.json();
-        setBuildings(data.buildings);
-        console.log(`Loaded ${data.buildingCount} buildings for ${data.planningArea}`);
+        const apiResponse = await response.json();
+        const buildingsData = apiResponse.data;
+
+        // Transform API response to expected format
+        const transformedBuildings = buildingsData.map((building: any) => ({
+          footprint: building.footprint.map((point: any) => [point.x, point.z]),
+          height: building.height
+        }));
+
+        setBuildings(transformedBuildings);
+        console.log(`Loaded ${transformedBuildings.length} buildings for ${selectedPlanningArea}`);
       } catch (error) {
         console.error(`Failed to load buildings for ${selectedPlanningArea}:`, error);
         setBuildings([]);

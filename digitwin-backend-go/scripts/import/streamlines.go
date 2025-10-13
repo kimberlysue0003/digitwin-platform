@@ -1,4 +1,4 @@
-// Import wind streamlines from JSON
+// Import wind streamlines from JSON with batch processing
 package main
 
 import (
@@ -11,33 +11,19 @@ import (
 	"log"
 	"os"
 	"time"
-
-	"gorm.io/gorm"
 )
 
 type StreamlineImport struct {
-	PlanningAreaID string             `json:"planningAreaId"`
-	Direction      string             `json:"direction"`
-	Points         []models.Point3D   `json:"points"`
+	PlanningAreaID string           `json:"planningAreaId"`
+	Direction      string           `json:"direction"`
+	Points         []models.Point3D `json:"points"`
 }
 
 func main() {
-	// Load configuration
-	cfg, err := config.Load()
-	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
-	}
-
-	// Initialize database
+	cfg, _ := config.Load()
 	db := database.NewPostgres(cfg.GetDatabaseDSN())
 	log.Println("Database connected")
 
-	// Auto-migrate
-	if err := db.AutoMigrate(&models.WindStreamline{}); err != nil {
-		log.Fatalf("Failed to migrate: %v", err)
-	}
-
-	// Read JSON file
 	jsonPath := os.Getenv("IMPORT_FILE")
 	if jsonPath == "" {
 		jsonPath = "./data/streamlines.json"
@@ -54,12 +40,9 @@ func main() {
 	}
 
 	log.Printf("Found %d streamlines to import", len(imports))
-
-	// Clear existing data
 	log.Println("Clearing existing streamlines...")
 	db.Exec("DELETE FROM wind_streamlines")
 
-	// Convert to models
 	ctx := context.Background()
 	startTime := time.Now()
 
@@ -72,7 +55,6 @@ func main() {
 		}
 	}
 
-	// Batch insert (500 per batch - streamlines have more data)
 	batchSize := 500
 	total := len(streamlines)
 
@@ -94,34 +76,43 @@ func main() {
 	elapsed := time.Since(startTime)
 	log.Printf("✅ Import completed: %d streamlines in %v", total, elapsed)
 
-	// Print statistics
-	printStatistics(db)
-}
-
-func printStatistics(db *gorm.DB) {
 	var count int64
 	db.Model(&models.WindStreamline{}).Count(&count)
 
-	var byDirection []struct {
+	// Count by direction
+	type DirectionCount struct {
 		Direction string
 		Count     int64
 	}
-	db.Model(&models.WindStreamline{}).Select("direction, count(*) as count").Group("direction").Order("direction").Scan(&byDirection)
-
-	var byArea []struct {
-		PlanningAreaID string
-		Count          int64
-	}
-	db.Model(&models.WindStreamline{}).Select("planning_area_id, count(*) as count").Group("planning_area_id").Order("count DESC").Limit(10).Scan(&byArea)
+	var dirCounts []DirectionCount
+	db.Model(&models.WindStreamline{}).
+		Select("direction, COUNT(*) as count").
+		Group("direction").
+		Order("direction").
+		Scan(&dirCounts)
 
 	fmt.Println("\n📊 Statistics:")
 	fmt.Printf("Total streamlines: %d\n", count)
-	fmt.Println("\nBy direction:")
-	for _, d := range byDirection {
-		fmt.Printf("  %s: %d\n", d.Direction, d.Count)
+	fmt.Println("By direction:")
+	for _, dc := range dirCounts {
+		fmt.Printf("  %s: %d\n", dc.Direction, dc.Count)
 	}
-	fmt.Println("\nTop 10 areas by streamline count:")
-	for i, a := range byArea {
-		fmt.Printf("  %d. %s: %d streamlines\n", i+1, a.PlanningAreaID, a.Count)
+
+	// Top areas
+	type AreaCount struct {
+		PlanningAreaID string
+		Count          int64
+	}
+	var areaCounts []AreaCount
+	db.Model(&models.WindStreamline{}).
+		Select("planning_area_id, COUNT(*) as count").
+		Group("planning_area_id").
+		Order("count DESC").
+		Limit(10).
+		Scan(&areaCounts)
+
+	fmt.Println("\n🌬️ Top 10 Areas by Streamline Count:")
+	for _, ac := range areaCounts {
+		fmt.Printf("  %s: %d streamlines\n", ac.PlanningAreaID, ac.Count)
 	}
 }

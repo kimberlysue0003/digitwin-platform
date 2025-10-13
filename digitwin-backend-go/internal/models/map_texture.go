@@ -3,6 +3,8 @@ package models
 import "time"
 
 // MapTexture represents metadata for ground map texture images
+// Note: PlanningAreaID does NOT have foreign key constraint because
+// map_textures use real area names (ang-mo-kio) while planning_areas use test IDs (area-a-1)
 type MapTexture struct {
 	ID             uint      `gorm:"primaryKey;autoIncrement" json:"id"`
 	PlanningAreaID string    `gorm:"size:50;uniqueIndex;not null" json:"planning_area_id"`
@@ -15,7 +17,7 @@ type MapTexture struct {
 	CenterLng      float64   `json:"center_lng"`
 	Zoom           int       `gorm:"default:14" json:"zoom"`
 	Width          int       `gorm:"default:2048" json:"width"`
-	Height         int       `gorm:"default:2048" json:"height"`
+	Height          int       `gorm:"default:2048" json:"height"`
 	CreatedAt      time.Time `json:"created_at"`
 }
 

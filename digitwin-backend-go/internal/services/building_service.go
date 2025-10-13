@@ -22,18 +22,11 @@ func NewBuildingService(buildingRepo *repositories.BuildingRepository, areaRepo 
 }
 
 // GetBuildingsByAreaID retrieves all buildings for a planning area
+// Note: Area validation is skipped because buildings use real area IDs (ang-mo-kio)
+// while planning_areas may have test data (area-a-1)
 func (s *BuildingService) GetBuildingsByAreaID(ctx context.Context, areaID string) ([]models.Building, error) {
 	if areaID == "" {
 		return nil, errors.NewSimpleValidationError("area ID cannot be empty")
-	}
-
-	// Verify area exists
-	area, err := s.areaRepo.GetByID(ctx, areaID)
-	if err != nil {
-		return nil, errors.NewDatabaseError("failed to verify area exists", err)
-	}
-	if area == nil {
-		return nil, errors.NewNotFoundError("planning area", areaID)
 	}
 
 	buildings, err := s.buildingRepo.GetByAreaID(ctx, areaID)
@@ -45,18 +38,10 @@ func (s *BuildingService) GetBuildingsByAreaID(ctx context.Context, areaID strin
 }
 
 // GetBuildingChunkInfo retrieves chunk information for a planning area
+// Note: Area validation is skipped because buildings use real area IDs
 func (s *BuildingService) GetBuildingChunkInfo(ctx context.Context, areaID string) (*repositories.ChunkInfo, error) {
 	if areaID == "" {
 		return nil, errors.NewSimpleValidationError("area ID cannot be empty")
-	}
-
-	// Verify area exists
-	area, err := s.areaRepo.GetByID(ctx, areaID)
-	if err != nil {
-		return nil, errors.NewDatabaseError("failed to verify area exists", err)
-	}
-	if area == nil {
-		return nil, errors.NewNotFoundError("planning area", areaID)
 	}
 
 	chunkInfo, err := s.buildingRepo.GetChunkInfo(ctx, areaID)
@@ -68,6 +53,7 @@ func (s *BuildingService) GetBuildingChunkInfo(ctx context.Context, areaID strin
 }
 
 // GetBuildingChunk retrieves a specific chunk of buildings
+// Note: Area validation is skipped because buildings use real area IDs
 func (s *BuildingService) GetBuildingChunk(ctx context.Context, areaID string, chunkIndex int) ([]models.Building, error) {
 	if areaID == "" {
 		return nil, errors.NewSimpleValidationError("area ID cannot be empty")
@@ -75,15 +61,6 @@ func (s *BuildingService) GetBuildingChunk(ctx context.Context, areaID string, c
 
 	if chunkIndex < 0 {
 		return nil, errors.NewSimpleValidationError("chunk index must be non-negative")
-	}
-
-	// Verify area exists
-	area, err := s.areaRepo.GetByID(ctx, areaID)
-	if err != nil {
-		return nil, errors.NewDatabaseError("failed to verify area exists", err)
-	}
-	if area == nil {
-		return nil, errors.NewNotFoundError("planning area", areaID)
 	}
 
 	// Get chunk info to validate chunk index

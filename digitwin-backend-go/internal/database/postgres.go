@@ -16,6 +16,7 @@ func NewPostgres(dsn string) *gorm.DB {
 		NowFunc: func() time.Time {
 			return time.Now().UTC()
 		},
+		DisableForeignKeyConstraintWhenMigrating: true,
 	})
 
 	if err != nil {

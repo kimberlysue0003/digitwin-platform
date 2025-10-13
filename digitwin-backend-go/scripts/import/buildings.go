@@ -1,4 +1,4 @@
-// Import buildings from JSON with batch processing
+// Import buildings from frontend JSON files into PostgreSQL database
 package main
 
 import (
@@ -10,93 +10,135 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"time"
 
 	"gorm.io/gorm"
 )
 
+// BuildingImport represents the structure of building data in JSON files
 type BuildingImport struct {
-	PlanningAreaID string              `json:"planningAreaId"`
-	Footprint      []models.Point2D    `json:"footprint"`
-	Height         float64             `json:"height"`
-	BuildingType   string              `json:"buildingType"`
-	YearBuilt      int                 `json:"yearBuilt"`
+	Footprint [][]float64 `json:"footprint"` // [[x, z], [x, z], ...]
+	Height    float64     `json:"height"`
+}
+
+// BuildingFileData represents the structure of entire building JSON file
+type BuildingFileData struct {
+	PlanningArea  string           `json:"planningArea"`
+	ID            string           `json:"id"`
+	BuildingCount int              `json:"buildingCount"`
+	Buildings     []BuildingImport `json:"buildings"`
 }
 
 func main() {
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		log.Fatalf("Failed to load config: %v", err)
 	}
 
 	// Initialize database
 	db := database.NewPostgres(cfg.GetDatabaseDSN())
-	log.Println("Database connected")
+	log.Println("✅ Database connected")
 
-	// Auto-migrate
-	if err := db.AutoMigrate(&models.Building{}); err != nil {
-		log.Fatalf("Failed to migrate: %v", err)
-	}
+	// Drop and recreate buildings table
+	log.Println("⚠️  Dropping existing buildings table...")
+	db.Exec("DROP TABLE IF EXISTS buildings CASCADE")
+	db.Migrator().CreateTable(&models.Building{})
+	log.Println("✅ Buildings table recreated")
 
-	// Read JSON file
-	jsonPath := os.Getenv("IMPORT_FILE")
-	if jsonPath == "" {
-		jsonPath = "./data/buildings.json"
-	}
+	// Path to frontend buildings directory
+	buildingsDir := filepath.Join("..", "digitwin-frontend", "public", "buildings")
 
-	data, err := os.ReadFile(jsonPath)
+	// Get all JSON files
+	files, err := filepath.Glob(filepath.Join(buildingsDir, "*.json"))
 	if err != nil {
-		log.Fatalf("Failed to read file: %v", err)
+		log.Fatalf("Failed to read buildings directory: %v", err)
 	}
 
-	var imports []BuildingImport
-	if err := json.Unmarshal(data, &imports); err != nil {
-		log.Fatalf("Failed to unmarshal JSON: %v", err)
+	if len(files) == 0 {
+		log.Fatalf("No building JSON files found in %s", buildingsDir)
 	}
 
-	log.Printf("Found %d buildings to import", len(imports))
+	log.Printf("📦 Found %d building JSON files\n", len(files))
 
-	// Clear existing data
-	log.Println("Clearing existing buildings...")
-	db.Exec("DELETE FROM buildings")
-
-	// Convert to models
 	ctx := context.Background()
+	totalBuildings := 0
 	startTime := time.Now()
 
-	buildings := make([]models.Building, len(imports))
-	for i, imp := range imports {
-		buildings[i] = models.Building{
-			PlanningAreaID: imp.PlanningAreaID,
-			Footprint:      models.Footprint(imp.Footprint),
-			Height:         imp.Height,
-			BuildingType:   imp.BuildingType,
-			YearBuilt:      imp.YearBuilt,
-		}
-	}
+	// Process each file
+	for i, filePath := range files {
+		areaName := filepath.Base(filePath[:len(filePath)-5]) // Remove .json
 
-	// Batch insert (1000 per batch)
-	batchSize := 1000
-	total := len(buildings)
+		log.Printf("[%d/%d] Processing %s...", i+1, len(files), areaName)
 
-	for i := 0; i < total; i += batchSize {
-		end := i + batchSize
-		if end > total {
-			end = total
-		}
-
-		batch := buildings[i:end]
-		if err := db.WithContext(ctx).CreateInBatches(batch, batchSize).Error; err != nil {
-			log.Printf("Failed to insert batch %d-%d: %v", i, end, err)
+		// Read JSON file
+		data, err := os.ReadFile(filePath)
+		if err != nil {
+			log.Printf("❌ Failed to read %s: %v", filePath, err)
 			continue
 		}
 
-		log.Printf("Imported %d/%d buildings", end, total)
+		// Parse JSON
+		var fileData BuildingFileData
+		if err := json.Unmarshal(data, &fileData); err != nil {
+			log.Printf("❌ Failed to parse %s: %v", filePath, err)
+			continue
+		}
+
+		// Transform to database model
+		buildings := make([]models.Building, 0, len(fileData.Buildings))
+		now := time.Now()
+
+		for _, imp := range fileData.Buildings {
+			// Convert footprint from [][]float64 to []Point2D
+			footprint := make(models.Footprint, len(imp.Footprint))
+			for j, point := range imp.Footprint {
+				if len(point) >= 2 {
+					footprint[j] = models.Point2D{
+						X: point[0],
+						Z: point[1],
+					}
+				}
+			}
+
+			building := models.Building{
+				PlanningAreaID: fileData.PlanningArea,
+				Footprint:      footprint,
+				Height:         imp.Height,
+				Source:         "Frontend JSON File",
+				FetchedAt:      now,
+				CreatedAt:      now,
+			}
+
+			buildings = append(buildings, building)
+		}
+
+		// Batch insert (1000 buildings at a time)
+		batchSize := 1000
+		for i := 0; i < len(buildings); i += batchSize {
+			end := i + batchSize
+			if end > len(buildings) {
+				end = len(buildings)
+			}
+
+			batch := buildings[i:end]
+			if err := db.WithContext(ctx).CreateInBatches(batch, batchSize).Error; err != nil {
+				log.Printf("❌ Failed to insert buildings for %s (batch %d): %v", areaName, i/batchSize+1, err)
+				continue
+			}
+		}
+
+		totalBuildings += len(buildings)
+		log.Printf("   ✅ Imported %d buildings for %s", len(buildings), areaName)
 	}
 
 	elapsed := time.Since(startTime)
-	log.Printf("✅ Import completed: %d buildings in %v", total, elapsed)
+	log.Printf("\n🎉 Import completed!")
+	log.Printf("   Total areas: %d", len(files))
+	log.Printf("   Total buildings: %d", totalBuildings)
+	log.Printf("   Time elapsed: %v", elapsed)
+	log.Printf("   Average: %.0f buildings/sec", float64(totalBuildings)/elapsed.Seconds())
 
 	// Print statistics
 	printStatistics(db)

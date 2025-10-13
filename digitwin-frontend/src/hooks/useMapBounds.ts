@@ -29,16 +29,26 @@ export function useMapBounds(planningAreaId: string): MapBounds {
   useEffect(() => {
     const loadMapData = async () => {
       try {
-        // Load metadata
-        const metaResponse = await fetch(`/map-textures/${planningAreaId}.json`);
+        // Load metadata from backend API
+        const metaResponse = await fetch(`http://localhost:8080/api/map-textures/${planningAreaId}`);
         if (!metaResponse.ok) {
           console.warn(`No map metadata for ${planningAreaId}`);
           return;
         }
-        const metadataJson = await metaResponse.json();
+        const apiResponse = await metaResponse.json();
+        const data = apiResponse.data;
+
+        // Transform API response to expected format
+        const metadataJson = {
+          bounds: [
+            [data.bounds_min_lat, data.bounds_min_lng],
+            [data.bounds_max_lat, data.bounds_max_lng]
+          ],
+          center: [data.center_lat, data.center_lng]
+        };
         setMetadata(metadataJson);
 
-        // Load texture and extract alpha channel
+        // Load texture from backend static files
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => {
@@ -60,7 +70,7 @@ export function useMapBounds(planningAreaId: string): MapBounds {
           setTextureHeight(canvas.height);
         };
         img.onerror = () => console.error('Failed to load map texture');
-        img.src = `/map-textures/${planningAreaId}.png`;
+        img.src = `http://localhost:8080${data.png_file_path}`;
       } catch (error) {
         console.error('Failed to load map data:', error);
       }

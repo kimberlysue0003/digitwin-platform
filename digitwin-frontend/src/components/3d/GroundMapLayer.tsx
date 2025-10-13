@@ -14,15 +14,28 @@ export function GroundMapLayer({ planningAreaId }: Props) {
   useEffect(() => {
     const loadMetadata = async () => {
       try {
-        const response = await fetch(`/map-textures/${planningAreaId}.json`);
+        const response = await fetch(`http://localhost:8080/api/map-textures/${planningAreaId}`);
         if (!response.ok) {
           console.warn(`No map texture metadata for ${planningAreaId}`);
           return;
         }
 
-        const data = await response.json();
-        setMetadata(data);
-        setTextureUrl(`/map-textures/${planningAreaId}.png`);
+        const apiResponse = await response.json();
+        const data = apiResponse.data;
+
+        // Transform API response to expected format
+        const transformedData = {
+          bounds: [
+            [data.bounds_min_lat, data.bounds_min_lng],
+            [data.bounds_max_lat, data.bounds_max_lng]
+          ],
+          center: [data.center_lat, data.center_lng],
+          zoom: data.zoom,
+          size: [data.width, data.height]
+        };
+
+        setMetadata(transformedData);
+        setTextureUrl(`http://localhost:8080${data.png_file_path}`);
       } catch (error) {
         console.error('Failed to load map texture metadata:', error);
       }

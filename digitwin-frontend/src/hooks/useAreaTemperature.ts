@@ -6,13 +6,23 @@ export function useAreaTemperature(planningAreaId: string): number | null {
   const { data } = useEnvironmentStore();
   const [mapMetadata, setMapMetadata] = useState<any>(null);
 
-  // Load map metadata
+  // Load map metadata from backend API
   useEffect(() => {
     const loadMetadata = async () => {
       try {
-        const response = await fetch(`/map-textures/${planningAreaId}.json`);
+        const response = await fetch(`http://localhost:8080/api/map-textures/${planningAreaId}`);
         if (!response.ok) return;
-        const metadata = await response.json();
+        const apiResponse = await response.json();
+        const data = apiResponse.data;
+
+        // Transform API response to expected format
+        const metadata = {
+          bounds: [
+            [data.bounds_min_lat, data.bounds_min_lng],
+            [data.bounds_max_lat, data.bounds_max_lng]
+          ],
+          center: [data.center_lat, data.center_lng]
+        };
         setMapMetadata(metadata);
       } catch (error) {
         console.error('Failed to load map metadata:', error);

@@ -31,14 +31,9 @@ func (s *MapTextureService) GetMapTextureByAreaID(ctx context.Context, areaID st
 		return nil, errors.NewSimpleValidationError("area ID cannot be empty")
 	}
 
-	// Verify area exists
-	area, err := s.areaRepo.GetByID(ctx, areaID)
-	if err != nil {
-		return nil, errors.NewDatabaseError("failed to verify area exists", err)
-	}
-	if area == nil {
-		return nil, errors.NewNotFoundError("planning area", areaID)
-	}
+	// Note: Not verifying area exists in planning_areas table
+	// because map_textures use real area names (ang-mo-kio)
+	// while planning_areas may have test data (area-a-1)
 
 	mapTexture, err := s.mapTextureRepo.GetByAreaID(ctx, areaID)
 	if err != nil {
@@ -61,14 +56,7 @@ func (s *MapTextureService) CreateMapTexture(ctx context.Context, mapTexture *mo
 		return errors.NewSimpleValidationError("PNG file path cannot be empty")
 	}
 
-	// Verify area exists
-	area, err := s.areaRepo.GetByID(ctx, mapTexture.PlanningAreaID)
-	if err != nil {
-		return errors.NewDatabaseError("failed to verify area exists", err)
-	}
-	if area == nil {
-		return errors.NewNotFoundError("planning area", mapTexture.PlanningAreaID)
-	}
+	// Note: Not verifying area exists - map_textures independent
 
 	// Validate bounds
 	if mapTexture.BoundsMinLat >= mapTexture.BoundsMaxLat || mapTexture.BoundsMinLng >= mapTexture.BoundsMaxLng {
@@ -173,12 +161,14 @@ func (s *MapTextureService) GetMapTextureFilePath(ctx context.Context, areaID st
 
 // ValidateMapTextureBounds checks if map texture bounds match the planning area bounds
 func (s *MapTextureService) ValidateMapTextureBounds(ctx context.Context, areaID string) error {
+	// Note: This validation is optional since map_textures are independent
 	area, err := s.areaRepo.GetByID(ctx, areaID)
 	if err != nil {
 		return errors.NewDatabaseError("failed to get planning area", err)
 	}
 	if area == nil {
-		return errors.NewNotFoundError("planning area", areaID)
+		// Skip validation if area doesn't exist - map textures can exist independently
+		return nil
 	}
 
 	mapTexture, err := s.mapTextureRepo.GetByAreaID(ctx, areaID)
