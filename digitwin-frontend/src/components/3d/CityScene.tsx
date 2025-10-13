@@ -68,7 +68,7 @@ export function CityScene() {
         <BuildingsLayer />
 
         {/* Visualization layers - moved to BuildingsLayer for better integration */}
-        {/* Temperature grid removed - using HeatParticles in BuildingsLayer instead */}
+        {/* Temperature grid removed - heat haze renders in BuildingsLayer instead */}
         {/* {activeLayer === 'temperature' && <TemperatureLayer />} */}
         {/* AirQuality now uses particles in BuildingsLayer */}
         {activeLayer === 'rainfall' && <RainfallLayer />}

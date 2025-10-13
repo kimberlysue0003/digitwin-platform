@@ -13,3 +13,19 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Make data overlay markers non-interactive so they don't block map clicks */
+.temp-marker-icon,
+.wind-flow-icon,
+.aq-marker-icon,
+.rain-marker-icon {
+  pointer-events: none !important;
+}
+
+/* Also make the parent leaflet marker container non-interactive */
+.leaflet-marker-icon.temp-marker-icon,
+.leaflet-marker-icon.wind-flow-icon,
+.leaflet-marker-icon.aq-marker-icon,
+.leaflet-marker-icon.rain-marker-icon {
+  pointer-events: none !important;
+}

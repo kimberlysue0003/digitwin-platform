@@ -42,6 +42,8 @@ export function DataOverlays({ layer, geoData, onAreaClick }: DataOverlaysProps)
               key={`temp-gradient-${index}`}
               center={[station.location.latitude, station.location.longitude]}
               radius={3000} // 3km radius for gradient effect
+              interactive={false}
+              bubblingMouseEvents={false}
               pathOptions={{
                 fillColor: color,
                 fillOpacity: 0.15,
@@ -63,7 +65,7 @@ export function DataOverlays({ layer, geoData, onAreaClick }: DataOverlaysProps)
           // Create animated temperature marker with pulsing effect
           const tempIcon = L.divIcon({
             html: `
-              <div style="position: relative; width: 60px; height: 60px;">
+              <div style="position: relative; width: 60px; height: 60px; pointer-events: none;">
                 <!-- Pulsing outer ring -->
                 <svg width="60" height="60" style="position: absolute; top: 0; left: 0;">
                   <circle cx="30" cy="30" r="20" fill="none" stroke="${color}" stroke-width="2" opacity="0.6">
@@ -98,6 +100,7 @@ export function DataOverlays({ layer, geoData, onAreaClick }: DataOverlaysProps)
               key={`temp-${index}`}
               position={[station.location.latitude, station.location.longitude]}
               icon={tempIcon}
+              interactive={false}
             >
               <Popup>
                 <div style={{ fontSize: '12px' }}>
@@ -274,7 +277,7 @@ export function DataOverlays({ layer, geoData, onAreaClick }: DataOverlaysProps)
                 align-items: center;
                 justify-content: center;
                 transform: rotate(${angle}deg);
-                pointer-events: auto;
+                pointer-events: none;
               ">
                 <svg width="160" height="100" viewBox="0 0 160 100" style="overflow: visible;">
                   <!-- Animated streamlines -->
@@ -300,6 +303,7 @@ export function DataOverlays({ layer, geoData, onAreaClick }: DataOverlaysProps)
               <Marker
                 position={[station.location.latitude, station.location.longitude]}
                 icon={flowIcon}
+                interactive={false}
               >
                 <Popup>
                   <div style={{ fontSize: '12px' }}>
@@ -325,17 +329,20 @@ export function DataOverlays({ layer, geoData, onAreaClick }: DataOverlaysProps)
   // Air Quality overlay with particle effects - using planning area polygons
   if (layer === 'airQuality' && data.pollution?.pm25 && geoData) {
     // Color based on PM2.5 level
+    // Tailored PM2.5 bands mapped to more distinct hues (roughly NEA/EPA guidance)
     const getAQColor = (pm25: number) => {
-      if (pm25 < 12) return '#10b981'; // Good - Green
-      if (pm25 < 35) return '#fbbf24'; // Moderate - Yellow
+      if (pm25 < 12) return '#16a34a'; // Good - Green
+      if (pm25 < 25) return '#84cc16'; // Moderate - Yellow-green
+      if (pm25 < 35) return '#facc15'; // Elevated - Yellow
       if (pm25 < 55) return '#f97316'; // Unhealthy for sensitive - Orange
       return '#ef4444'; // Unhealthy - Red
     };
 
     const getAQLabel = (pm25: number) => {
       if (pm25 < 12) return 'Good';
-      if (pm25 < 35) return 'Moderate';
-      if (pm25 < 55) return 'Unhealthy';
+      if (pm25 < 25) return 'Moderate';
+      if (pm25 < 35) return 'Elevated';
+      if (pm25 < 55) return 'Unhealthy (Sensitive)';
       return 'Very Unhealthy';
     };
 
@@ -386,7 +393,6 @@ export function DataOverlays({ layer, geoData, onAreaClick }: DataOverlaysProps)
 
           const pm25 = pm25Reading.pm25;
           const color = getAQColor(pm25);
-          const planningAreaName = feature.properties?.name || '';
 
           // Handle both Polygon and MultiPolygon
           let positions: any;
@@ -402,19 +408,14 @@ export function DataOverlays({ layer, geoData, onAreaClick }: DataOverlaysProps)
             <Polygon
               key={`aq-polygon-${index}`}
               positions={positions}
+              interactive={false}
+              bubblingMouseEvents={false}
               pathOptions={{
                 fillColor: color,
                 fillOpacity: 0.18,
                 color: color,
                 weight: 1,
                 opacity: 0.4,
-              }}
-              eventHandlers={{
-                click: () => {
-                  if (onAreaClick) {
-                    onAreaClick(planningAreaName, region);
-                  }
-                },
               }}
             />
           );
@@ -498,7 +499,7 @@ export function DataOverlays({ layer, geoData, onAreaClick }: DataOverlaysProps)
 
           const aqIcon = L.divIcon({
             html: `
-              <div style="position: relative; width: 80px; height: 80px;">
+              <div style="position: relative; width: 80px; height: 80px; pointer-events: none;">
                 <svg width="80" height="80" style="position: absolute; top: 0; left: 0;">
                   <!-- Floating particles -->
                   ${createParticles()}
@@ -544,6 +545,7 @@ export function DataOverlays({ layer, geoData, onAreaClick }: DataOverlaysProps)
               key={`aq-marker-${index}`}
               position={center}
               icon={aqIcon}
+              interactive={false}
             >
               <Popup>
                 <div style={{ fontSize: '12px' }}>
@@ -603,6 +605,8 @@ export function DataOverlays({ layer, geoData, onAreaClick }: DataOverlaysProps)
               key={`rain-gradient-${index}`}
               center={[station.location.latitude, station.location.longitude]}
               radius={Math.min(1000 + rainfall * 200, 3000)} // Larger area for heavier rain
+              interactive={false}
+              bubblingMouseEvents={false}
               pathOptions={{
                 fillColor: color,
                 fillOpacity: 0.2,
@@ -653,7 +657,7 @@ export function DataOverlays({ layer, geoData, onAreaClick }: DataOverlaysProps)
 
           const rainIcon = L.divIcon({
             html: `
-              <div style="position: relative; width: 60px; height: 60px;">
+              <div style="position: relative; width: 60px; height: 60px; pointer-events: none;">
                 <svg width="60" height="60" style="position: absolute; top: 0; left: 0;">
                   <!-- Animated droplets -->
                   ${createDroplets()}
@@ -739,13 +743,7 @@ export function DataOverlays({ layer, geoData, onAreaClick }: DataOverlaysProps)
               key={`rain-${index}`}
               position={[station.location.latitude, station.location.longitude]}
               icon={rainIcon}
-              eventHandlers={{
-                click: () => {
-                  if (nearestArea && onAreaClick) {
-                    onAreaClick(nearestArea.name, nearestArea.region, nearestArea.id);
-                  }
-                }
-              }}
+              interactive={false}
             >
               <Popup>
                 <div style={{ fontSize: '12px' }}>

@@ -5,23 +5,29 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"math/rand"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 
 	"digitwin-backend/internal/models"
+	"digitwin-backend/internal/utils"
 )
 
 // BuildingRepository handles data access for buildings
 type BuildingRepository struct {
 	db    *gorm.DB
 	cache *redis.Client
+	group utils.Group // Singleflight group for request coalescing
 }
 
 // NewBuildingRepository creates a new building repository
 func NewBuildingRepository(db *gorm.DB, cache *redis.Client) *BuildingRepository {
-	return &BuildingRepository{db: db, cache: cache}
+	return &BuildingRepository{
+		db:    db,
+		cache: cache,
+	}
 }
 
 // GetByAreaID retrieves all buildings for a planning area
@@ -75,10 +81,11 @@ func (r *BuildingRepository) GetChunkInfo(ctx context.Context, areaID string) (*
 	}, nil
 }
 
-// GetChunk retrieves a specific chunk of buildings
+// GetChunk retrieves a specific chunk of buildings with singleflight and cache anti-avalanche
 func (r *BuildingRepository) GetChunk(ctx context.Context, areaID string, chunkID int) ([]models.Building, error) {
-	// Try cache first
 	cacheKey := fmt.Sprintf("buildings:%s:chunk:%d", areaID, chunkID)
+
+	// Try cache first
 	cached, err := r.cache.Get(ctx, cacheKey).Result()
 	if err == nil {
 		var buildings []models.Building
@@ -87,21 +94,46 @@ func (r *BuildingRepository) GetChunk(ctx context.Context, areaID string, chunkI
 		}
 	}
 
-	// Query database
-	var buildings []models.Building
-	offset := chunkID * 100
-	if err := r.db.Where("planning_area_id = ?", areaID).
-		Offset(offset).
-		Limit(100).
-		Find(&buildings).Error; err != nil {
+	// Use singleflight to prevent multiple simultaneous database queries for the same chunk
+	// This is crucial when multiple users request the same chunk at the same time
+	sfKey := fmt.Sprintf("chunk:%s:%d", areaID, chunkID)
+	result, err := r.group.Do(sfKey, func() (interface{}, error) {
+		// Double-check cache after acquiring singleflight lock
+		cached, err := r.cache.Get(ctx, cacheKey).Result()
+		if err == nil {
+			var buildings []models.Building
+			if err := json.Unmarshal([]byte(cached), &buildings); err == nil {
+				return buildings, nil
+			}
+		}
+
+		// Query database
+		var buildings []models.Building
+		offset := chunkID * 100
+		if err := r.db.Where("planning_area_id = ?", areaID).
+			Offset(offset).
+			Limit(100).
+			Find(&buildings).Error; err != nil {
+			return nil, err
+		}
+
+		// Cache with random expiry time to prevent cache avalanche
+		// Base: 1 hour, Random offset: ±5 minutes
+		baseExpiry := time.Hour
+		randomOffset := time.Duration(rand.Intn(600)-300) * time.Second // ±5 minutes
+		expiry := baseExpiry + randomOffset
+
+		data, _ := json.Marshal(buildings)
+		r.cache.Set(ctx, cacheKey, data, expiry)
+
+		return buildings, nil
+	})
+
+	if err != nil {
 		return nil, err
 	}
 
-	// Cache for 1 hour
-	data, _ := json.Marshal(buildings)
-	r.cache.Set(ctx, cacheKey, data, time.Hour)
-
-	return buildings, nil
+	return result.([]models.Building), nil
 }
 
 // Create creates a new building

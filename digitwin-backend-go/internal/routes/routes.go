@@ -4,9 +4,9 @@ package routes
 import (
 	"digitwin-backend/internal/handlers"
 	"digitwin-backend/internal/middleware"
-	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
@@ -17,6 +17,7 @@ type Router struct {
 	mapTextureHandler *handlers.MapTextureHandler
 	healthHandler     *handlers.HealthHandler
 	wsHandler         *handlers.WebSocketHandler
+	redisClient       *redis.Client
 	logger            *zap.Logger
 }
 
@@ -27,6 +28,7 @@ func NewRouter(
 	mapTextureHandler *handlers.MapTextureHandler,
 	healthHandler *handlers.HealthHandler,
 	wsHandler *handlers.WebSocketHandler,
+	redisClient *redis.Client,
 	logger *zap.Logger,
 ) *Router {
 	return &Router{
@@ -36,6 +38,7 @@ func NewRouter(
 		mapTextureHandler: mapTextureHandler,
 		healthHandler:     healthHandler,
 		wsHandler:         wsHandler,
+		redisClient:       redisClient,
 		logger:            logger,
 	}
 }
@@ -45,11 +48,18 @@ func (r *Router) Setup(engine *gin.Engine) {
 	engine.Use(middleware.CORSMiddleware())
 	engine.Use(middleware.LoggerMiddleware(r.logger))
 	engine.Use(middleware.RecoveryMiddleware(r.logger))
-	engine.Use(middleware.TimeoutMiddleware(30 * time.Second))
+	// Removed TimeoutMiddleware - let requests complete naturally
+	// Building chunk requests can take 5-10 seconds each, 100+ chunks = 10+ minutes total
 
-	// Rate limiting: 1000 requests per minute per IP
-	rateLimiter := middleware.NewRateLimiter(1000, time.Minute)
-	engine.Use(middleware.RateLimitMiddleware(rateLimiter))
+	// DISABLED: These middleware cause severe performance issues with 100+ parallel chunk requests
+	// Each request = 2-4 Redis queries + potential queueing = massive slowdown
+	// TODO: Optimize or remove entirely
+
+	// concurrencyLimiter := middleware.NewConcurrencyLimiter(100)
+	// engine.Use(middleware.ConcurrencyLimitMiddleware(concurrencyLimiter))
+
+	// redisRateLimiter := middleware.NewRedisRateLimiter(r.redisClient, 5000, time.Second)
+	// engine.Use(middleware.RedisRateLimitMiddleware(redisRateLimiter))
 
 	// Health check endpoints (no /api prefix)
 	engine.GET("/health", r.healthHandler.HealthCheck)

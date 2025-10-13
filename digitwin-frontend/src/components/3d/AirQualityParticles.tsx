@@ -1,46 +1,36 @@
 // Air quality (PM2.5) particle effect - uses regional data (north/south/east/west/central)
-import { useRef, useMemo, useEffect, useState } from 'react';
+import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useEnvironmentStore } from '../../stores/environmentStore';
-
-interface Building {
-  footprint: [number, number][];
-  height: number;
-}
-
-interface BuildingData {
-  planningArea: string;
-  id: string;
-  buildingCount: number;
-  buildings: Building[];
-}
+import { useMapBounds } from '../../hooks/useMapBounds';
+import { PLANNING_AREAS } from '../../data/planningAreas';
 
 interface Props {
   planningAreaId: string;
 }
 
 // Map planning areas to Singapore regions
-const getRegionForArea = (areaId: string): 'north' | 'south' | 'east' | 'west' | 'central' => {
-  // Choa Chu Kang is in the west
-  const westAreas = ['choa-chu-kang', 'bukit-batok', 'bukit-panjang', 'jurong-west', 'jurong-east'];
-  const northAreas = ['woodlands', 'sembawang', 'yishun', 'ang-mo-kio'];
-  const eastAreas = ['bedok', 'tampines', 'pasir-ris', 'changi'];
-  const centralAreas = ['downtown-core', 'orchard', 'newton', 'bukit-timah'];
-
-  if (westAreas.includes(areaId)) return 'west';
-  if (northAreas.includes(areaId)) return 'north';
-  if (eastAreas.includes(areaId)) return 'east';
-  if (centralAreas.includes(areaId)) return 'central';
-  return 'central'; // default
-};
+const AREA_REGION_MAP: Record<string, 'north' | 'south' | 'east' | 'west' | 'central'> = PLANNING_AREAS.reduce((acc, area) => {
+  acc[area.id] = area.region;
+  return acc;
+}, {} as Record<string, 'north' | 'south' | 'east' | 'west' | 'central'>);
 
 export function AirQualityParticles({ planningAreaId }: Props) {
   const particlesRef = useRef<THREE.Points>(null);
   const { data } = useEnvironmentStore();
-  const [buildingBounds, setBuildingBounds] = useState<{ minX: number; maxX: number; minZ: number; maxZ: number } | null>(null);
+  const mapBounds = useMapBounds(planningAreaId);
 
-  // Create circular particle texture
+  const regionPm25 = useMemo(() => {
+    if (!data?.pollution?.pm25) return null;
+
+    const region = AREA_REGION_MAP[planningAreaId] ?? 'central';
+    const regionData = data.pollution.pm25.find((r: any) => r.region === region);
+
+    return regionData?.pm25 ?? null;
+  }, [data, planningAreaId]);
+
+  // Create solid circular particle texture (matching temperature effect)
   const particleTexture = useMemo(() => {
     const canvas = document.createElement('canvas');
     canvas.width = 64;
@@ -50,7 +40,7 @@ export function AirQualityParticles({ planningAreaId }: Props) {
 
     const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
     gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-    gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.5)');
+    gradient.addColorStop(0.8, 'rgba(255, 255, 255, 1)');
     gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
 
     ctx.fillStyle = gradient;
@@ -58,40 +48,9 @@ export function AirQualityParticles({ planningAreaId }: Props) {
 
     return new THREE.CanvasTexture(canvas);
   }, []);
-
-  // Load building data to get bounds
-  useEffect(() => {
-    const loadBuildingBounds = async () => {
-      try {
-        const response = await fetch(`/buildings/${planningAreaId}.json`);
-        if (!response.ok) return;
-
-        const buildingData: BuildingData = await response.json();
-
-        let minX = Infinity, maxX = -Infinity;
-        let minZ = Infinity, maxZ = -Infinity;
-
-        buildingData.buildings.forEach(building => {
-          building.footprint.forEach(([x, z]) => {
-            minX = Math.min(minX, x);
-            maxX = Math.max(maxX, x);
-            minZ = Math.min(minZ, z);
-            maxZ = Math.max(maxZ, z);
-          });
-        });
-
-        setBuildingBounds({ minX, maxX, minZ, maxZ });
-      } catch (error) {
-        console.error('Failed to load building bounds:', error);
-      }
-    };
-
-    loadBuildingBounds();
-  }, [planningAreaId]);
-
-  // Create particle cloud within building bounds
+  // Create particle cloud aligned with map texture similar to temperature particles
   const { positions, colors, velocities, initialPositions } = useMemo(() => {
-    if (!data?.pollution?.pm25 || !buildingBounds) {
+    if (!mapBounds.isLoaded || regionPm25 === null) {
       return {
         positions: new Float32Array(0),
         colors: new Float32Array(0),
@@ -100,105 +59,112 @@ export function AirQualityParticles({ planningAreaId }: Props) {
       };
     }
 
-    // Get regional PM2.5 value
-    const region = getRegionForArea(planningAreaId);
-    const regionData = data.pollution.pm25.find((r: any) => r.region === region);
-    const pm25 = regionData?.pm25 || 25; // default moderate value
+    const { width, height, textureWidth, textureHeight, isNonTransparent } = mapBounds;
+    const pm25 = regionPm25;
 
-    console.log(`Air Quality for ${planningAreaId} (${region}): PM2.5 = ${pm25} μg/m³`);
-
-    const { minX, maxX, minZ, maxZ } = buildingBounds;
-    const areaWidth = maxX - minX;
-    const areaHeight = maxZ - minZ;
-
-    // Grid-based distribution
-    const gridSize = 20;
+    // Particle density and layering to mirror temperature effect
+    const particleDensity = 0.0003;
+    const estimatedParticles = Math.floor(width * height * particleDensity);
     const layers = 10;
-    const totalParticles = gridSize * gridSize * layers;
 
-    const positions = new Float32Array(totalParticles * 3);
-    const colors = new Float32Array(totalParticles * 3);
-    const velocities = new Float32Array(totalParticles * 3);
-    const initialPositions = new Float32Array(totalParticles * 3);
+    const tempPositions: number[] = [];
+    const tempColors: number[] = [];
+    const tempVelocities: number[] = [];
+    const tempInitialPositions: number[] = [];
 
-    const spacingX = areaWidth / gridSize;
-    const spacingZ = areaHeight / gridSize;
-    const spacingY = 120 / layers;
+    let attempts = 0;
+    const maxAttempts = estimatedParticles * 5;
 
-    // Color based on PM2.5 level - matching 2D layer exactly
-    let r, g, b;
-    if (pm25 < 12) {
-      // Good - Green (#10b981)
-      r = 0x10 / 255; g = 0xb9 / 255; b = 0x81 / 255;
-    } else if (pm25 < 35) {
-      // Moderate - Yellow (#fbbf24)
-      r = 0xfb / 255; g = 0xbf / 255; b = 0x24 / 255;
-    } else if (pm25 < 55) {
-      // Unhealthy for sensitive - Orange (#f97316)
-      r = 0xf9 / 255; g = 0x73 / 255; b = 0x16 / 255;
-    } else {
-      // Unhealthy - Red (#ef4444)
-      r = 0xef / 255; g = 0x44 / 255; b = 0x44 / 255;
-    }
+    while (tempPositions.length / 3 < estimatedParticles && attempts < maxAttempts) {
+      attempts++;
 
-    let i = 0;
-    for (let gx = 0; gx < gridSize; gx++) {
-      for (let gz = 0; gz < gridSize; gz++) {
-        const baseX = minX + (gx / gridSize) * areaWidth;
-        const baseZ = minZ + (gz / gridSize) * areaHeight;
+      const x = (Math.random() - 0.5) * width;
+      const z = (Math.random() - 0.5) * height;
 
-        for (let layer = 0; layer < layers; layer++) {
-          const x = baseX + (Math.random() - 0.5) * spacingX;
-          const y = 5 + layer * spacingY + Math.random() * 10;
-          const z = baseZ + (Math.random() - 0.5) * spacingZ;
+      const u = (x + width / 2) / width;
+      const v = (z + height / 2) / height;
+      const texX = Math.floor(u * textureWidth);
+      const texY = Math.floor(v * textureHeight);
 
-          positions[i * 3] = x;
-          positions[i * 3 + 1] = y;
-          positions[i * 3 + 2] = z;
+      if (!isNonTransparent(texX, texY)) continue;
 
-          initialPositions[i * 3] = x;
-          initialPositions[i * 3 + 1] = y;
-          initialPositions[i * 3 + 2] = z;
+      for (let layer = 0; layer < layers; layer++) {
+        const particleY = layer * 12 + Math.random() * 10;
 
-          // Use regional color for all particles
-          colors[i * 3] = r;
-          colors[i * 3 + 1] = g;
-          colors[i * 3 + 2] = b;
+        tempPositions.push(x, particleY, z);
+        tempInitialPositions.push(x, particleY, z);
 
-          // Slower drift for pollution particles (heavier than heat)
-          velocities[i * 3] = (Math.random() - 0.5) * 0.3;
-          velocities[i * 3 + 1] = Math.random() * 0.5 + 0.2; // Slow upward drift
-          velocities[i * 3 + 2] = (Math.random() - 0.5) * 0.3;
-
-          i++;
+        // Align colors to 2D thresholds: <12 green, 12-25 yellow-green, 25-35 yellow, 35-55 orange, >=55 red
+        let r: number, g: number, b: number;
+        if (pm25 < 12) {
+          // #16a34a
+          r = 0x16 / 255;
+          g = 0xa3 / 255;
+          b = 0x4a / 255;
+        } else if (pm25 < 25) {
+          // #84cc16
+          r = 0x84 / 255;
+          g = 0xcc / 255;
+          b = 0x16 / 255;
+        } else if (pm25 < 35) {
+          // #facc15
+          r = 0xfa / 255;
+          g = 0xcc / 255;
+          b = 0x15 / 255;
+        } else if (pm25 < 55) {
+          // #f97316
+          r = 0xf9 / 255;
+          g = 0x73 / 255;
+          b = 0x16 / 255;
+        } else {
+          // #ef4444
+          r = 0xef / 255;
+          g = 0x44 / 255;
+          b = 0x44 / 255;
         }
+
+        tempColors.push(r, g, b);
+
+        // Pollution particles drift more slowly upward with mild turbulence
+        tempVelocities.push(
+          (Math.random() - 0.5) * 0.6,
+          Math.max(0.2, (pm25 - 20) * 0.02) + Math.random() * 0.4,
+          (Math.random() - 0.5) * 0.6
+        );
       }
+
+      if (tempPositions.length / 3 >= estimatedParticles) break;
     }
 
-    console.log(`Created ${totalParticles} PM2.5 particles in ${gridSize}x${gridSize}x${layers} grid`);
+    const positions = new Float32Array(tempPositions);
+    const colors = new Float32Array(tempColors);
+    const velocities = new Float32Array(tempVelocities);
+    const initialPositions = new Float32Array(tempInitialPositions);
+
+    console.log(`Created ${positions.length / 3} PM2.5 particles at ${pm25.toFixed(1)} μg/m³`);
 
     return { positions, colors, velocities, initialPositions };
-  }, [data, buildingBounds, planningAreaId]);
+  }, [mapBounds, regionPm25]);
 
-  // Animate particles with slow drift
+  // Animate particles similar to temperature but with pollution-specific reset behaviour
   useFrame((state, delta) => {
-    if (!particlesRef.current || !buildingBounds) return;
+    if (!particlesRef.current || !mapBounds.isLoaded) return;
 
     const positionsAttr = particlesRef.current.geometry.attributes.position;
     const positions = positionsAttr.array as Float32Array;
 
-    const { minX, maxX, minZ, maxZ } = buildingBounds;
+    const halfWidth = mapBounds.width / 2;
+    const halfHeight = mapBounds.height / 2;
 
     for (let i = 0; i < positions.length / 3; i++) {
       positions[i * 3] += velocities[i * 3] * delta * 10;
       positions[i * 3 + 1] += velocities[i * 3 + 1] * delta * 10;
       positions[i * 3 + 2] += velocities[i * 3 + 2] * delta * 10;
 
-      // Reset when particle goes too high or out of bounds
       if (
-        positions[i * 3 + 1] > 150 ||
-        positions[i * 3] < minX || positions[i * 3] > maxX ||
-        positions[i * 3 + 2] < minZ || positions[i * 3 + 2] > maxZ
+        positions[i * 3 + 1] > 140 ||
+        positions[i * 3] < -halfWidth || positions[i * 3] > halfWidth ||
+        positions[i * 3 + 2] < -halfHeight || positions[i * 3 + 2] > halfHeight
       ) {
         positions[i * 3] = initialPositions[i * 3];
         positions[i * 3 + 1] = initialPositions[i * 3 + 1];
@@ -228,10 +194,10 @@ export function AirQualityParticles({ planningAreaId }: Props) {
         />
       </bufferGeometry>
       <pointsMaterial
-        size={10}
+        size={15}
         vertexColors={true}
         transparent={true}
-        opacity={0.85}
+        opacity={0.9}
         sizeAttenuation={true}
         blending={THREE.NormalBlending}
         depthWrite={false}

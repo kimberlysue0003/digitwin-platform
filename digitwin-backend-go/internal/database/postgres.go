@@ -28,10 +28,16 @@ func NewPostgres(dsn string) *gorm.DB {
 		log.Fatalf("Failed to get database instance: %v", err)
 	}
 
-	// Connection pool settings
-	sqlDB.SetMaxIdleConns(10)
-	sqlDB.SetMaxOpenConns(100)
+	// Connection pool settings for high concurrency
+	// MaxIdleConns: Keep 50 idle connections ready for burst traffic
+	sqlDB.SetMaxIdleConns(50)
+	// MaxOpenConns: Support up to 500 concurrent database connections
+	// This allows 100+ concurrent users (each loading ~5 chunks simultaneously)
+	sqlDB.SetMaxOpenConns(500)
+	// ConnMaxLifetime: Recycle connections every hour to prevent stale connections
 	sqlDB.SetConnMaxLifetime(time.Hour)
+	// ConnMaxIdleTime: Close idle connections after 10 minutes
+	sqlDB.SetConnMaxIdleTime(10 * time.Minute)
 
 	log.Println("✅ Database connected successfully")
 
