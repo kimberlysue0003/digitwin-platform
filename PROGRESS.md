@@ -1,6 +1,6 @@
 # Singapore Digital Twin Platform - Development Progress
 
-## Current Status (2025-10-06)
+## Current Status (2025-10-13)
 
 ### ✅ Completed Tasks
 
@@ -33,70 +33,47 @@
   - Data location: `digitwin-frontend/public/map-textures/*.png`
   - Status: 54/54 areas completed
 
-#### 3. Backend Infrastructure (50%)
-- [x] Project structure created (`digitwin-backend/`)
-- [x] Fastify server setup
-- [x] Prisma ORM configuration
-- [x] PostgreSQL database schema designed
+#### 3. Backend Infrastructure (100%) - Go Backend
+- [x] Go backend project structure (`digitwin-backend-go/`)
+- [x] Gin web framework setup
+- [x] GORM with PostgreSQL connection
+- [x] Database models (PlanningArea, Building, WindStreamline, MapTexture)
 - [x] Docker PostgreSQL container running (port 5432)
-- [x] Dependencies installed (fastify, prisma, ioredis, etc.)
+- [x] All tables migrated successfully
+- [x] Data imported: 55 map textures, 119,880 buildings, 54 areas
+- [x] Building chunk API for large datasets (100 buildings per chunk)
+- [x] CORS middleware for frontend access
+- [x] Static file serving for map textures
+- [x] Redis integration (optional, currently disabled)
+- [x] Backend running on port 8080
+
+#### 4. Frontend-Backend Integration (100%)
+- [x] BuildingsLayer.tsx uses backend API with chunked loading
+- [x] GroundMapLayer.tsx uses backend static file serving
+- [x] WindStreamlines.tsx uses backend API
+- [x] All 3D visualizations working with backend data
+- [x] Loading progress UI for large datasets
+
+#### 5. 2D Map Improvements (100%)
+- [x] **Fixed: Data overlay markers blocking area clicks**
+  - Issue: Temperature, wind, air quality, rainfall markers blocked polygon clicks
+  - Solution: Set `interactive={false}` on all Marker components
+  - Added CSS `pointer-events: none` for additional safety
+  - Status: ✅ **RESOLVED** - Users can now click through markers to select areas
+
+- [x] Hover events on planning areas work correctly
+- [x] Click events penetrate through data overlays
 
 ### ⏸️ Pending Tasks
 
-#### 1. Database Setup (NEXT PRIORITY)
-- [ ] **CRITICAL**: Fix PostgreSQL authentication issue
-  - Error: `P1000: Authentication failed`
-  - Docker container is running and ready
-  - Connection string: `postgresql://postgres:digitwin123@localhost:5432/digitwin`
-  - File: `digitwin-backend/.env`
-  - **Action needed**: Verify Docker container credentials or recreate container
+#### 1. Performance Optimization (Optional)
+- [ ] **3D Rendering Performance** for building-dense areas (11,456 buildings)
+  - Attempted: LOD (Level of Detail) + Frustum Culling - removed due to position issues
+  - Attempted: Frustum Culling only - removed due to insufficient improvement
+  - Current: Rendering all buildings directly (works but may be slow in dense areas)
+  - Future options: InstancedMesh, simplified geometries, or better LOD implementation
 
-- [ ] Run Prisma migration to create tables
-  - Command: `cd digitwin-backend && npx prisma migrate dev --name init`
-  - Will create tables: PlanningArea, Building, WindStreamline, MapTexture, WeatherStation, PollutionRegion
-
-#### 2. Data Import Scripts
-- [ ] Create `digitwin-backend/scripts/importPlanningAreas.ts`
-  - Import 54 real planning areas + 5 concept regions metadata
-  - Source: `digitwin-frontend/src/constants/planningAreas.ts`
-
-- [ ] Create `digitwin-backend/scripts/importBuildings.ts`
-  - Import ~108,000 buildings from all 54 areas
-  - Source: `digitwin-frontend/public/buildings/*.json`
-  - Batch insert for performance
-
-- [ ] Create `digitwin-backend/scripts/importStreamlines.ts`
-  - Import 74,319 wind streamlines
-  - Source: `digitwin-frontend/public/streamlines/*.json`
-  - Store points as JSON in database
-
-- [ ] Create `digitwin-backend/scripts/importMapTextures.ts`
-  - Copy PNG files to `digitwin-backend/static/textures/`
-  - Import metadata (bounds, center, zoom) to database
-  - Source: `digitwin-frontend/public/map-textures/*.json`
-
-#### 3. Backend API Development
-- [ ] Create `digitwin-backend/src/index.ts` - Main Fastify server
-- [ ] Create `digitwin-backend/src/routes/areas.ts`
-  - GET `/api/areas` - List all planning areas
-  - GET `/api/areas/:id` - Get area details
-  - GET `/api/areas/:id/buildings` - Get buildings for area
-  - GET `/api/areas/:id/streamlines` - Get wind streamlines
-  - GET `/api/areas/:id/map` - Get map texture metadata
-
-- [ ] Setup static file serving for PNG textures
-- [ ] Add Redis caching for frequently accessed data
-- [ ] Add CORS configuration for frontend
-
-#### 4. Frontend Integration
-- [ ] Modify `BuildingsLayer.tsx` to fetch from API instead of static JSON
-- [ ] Modify `WindStreamlines.tsx` to fetch from API
-- [ ] Modify `GroundMapLayer.tsx` to use backend static files
-- [ ] Update `useEnvironmentalData.ts` to fetch from API
-- [ ] Add loading states and error handling
-- [ ] Add retry logic for API failures
-
-#### 5. Testing & Deployment
+#### 2. Testing & Deployment
 - [ ] Test all 54 areas load correctly from backend
 - [ ] Performance testing with full dataset
 - [ ] Memory usage optimization

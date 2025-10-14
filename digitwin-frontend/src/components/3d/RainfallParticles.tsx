@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useEnvironmentStore } from '../../stores/environmentStore';
 import { useMapBounds } from '../../hooks/useMapBounds';
+import { PLANNING_AREAS } from '../../data/planningAreas';
 
 interface Building {
   footprint: [number, number][];
@@ -95,6 +96,14 @@ export function RainfallParticles({ planningAreaId }: Props) {
     const [centerLat, centerLng] = metadata!.center;
     const scale = 111000;
 
+    // Helper function: Check if station is within area bounds
+    const isStationInArea = (station: any, bounds: [[number, number], [number, number]]) => {
+      const lat = station.location.latitude;
+      const lng = station.location.longitude;
+      const [[minLat, minLng], [maxLat, maxLng]] = bounds;
+      return lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng;
+    };
+
     // IDW interpolation for rainfall at position
     const getRainfallAt = (x: number, z: number): number => {
       let weightedRain = 0;
@@ -111,7 +120,13 @@ export function RainfallParticles({ planningAreaId }: Props) {
         const dz = z - stationZ;
         const distance = Math.sqrt(dx * dx + dz * dz);
 
-        const weight = distance < 100 ? 1000 : 1 / (distance * distance);
+        // Only consider stations within 10km (10000m)
+        // Use power of 3 for stronger distance decay
+        const maxInfluenceDistance = 10000; // 10km
+        if (distance > maxInfluenceDistance) return;
+
+        // IDW with power=3 for stronger decay
+        const weight = 1 / Math.pow(Math.max(distance, 100), 3);
         weightedRain += reading.value * weight;
         totalWeight += weight;
       });
@@ -127,37 +142,49 @@ export function RainfallParticles({ planningAreaId }: Props) {
       avgRainfall = 25.0; // Heavy rain showcase
       console.log(`Rainfall for ${planningAreaId}: ${avgRainfall.toFixed(2)} mm (SHOWCASE)`);
     } else {
-      // Find the maximum rainfall reading from any station
-      const maxReading = Math.max(...readings.map(r => r.value));
+      // Step 1: Check if there's a weather station within this area's bounds
+      const currentArea = PLANNING_AREAS.find(pa => pa.id === planningAreaId);
 
-      // If there's any rainfall detected anywhere, use it for the area
-      // This ensures we show rain if the API reports rain
-      if (maxReading > 0) {
-        // Real-time calculation for the area using IDW
-        let totalRainfall = 0;
-        const samplePoints = 25;
-        for (let i = 0; i < samplePoints; i++) {
-          const x = (Math.random() - 0.5) * width;
-          const z = (Math.random() - 0.5) * height;
-          totalRainfall += getRainfallAt(x, z);
+      if (currentArea) {
+        const localStations = stations.filter((s: any) => isStationInArea(s, currentArea.bounds));
+        const localReadings = readings.filter((r: any) =>
+          localStations.some((s: any) => s.station_id === r.station_id)
+        );
+
+        // Step 2: If we have local station(s), use their data directly (prioritize local measurements)
+        if (localReadings.length > 0) {
+          // Use the average if multiple local stations, or the single value
+          avgRainfall = localReadings.reduce((sum: number, r: any) => sum + r.value, 0) / localReadings.length;
+          console.log(`Rainfall for ${planningAreaId}: ${avgRainfall.toFixed(2)} mm (LOCAL STATION - ${localReadings.length} station(s) in area)`);
         }
-        avgRainfall = totalRainfall / samplePoints;
+        // Step 3: No local station, use IDW interpolation from nearby stations
+        else {
+          const maxReading = Math.max(...readings.map(r => r.value));
 
-        // If IDW gave us very low values but there's rain somewhere, use at least the max reading scaled down
-        if (avgRainfall < 0.01 && maxReading > 0.1) {
-          avgRainfall = maxReading * 0.3; // Use 30% of max reading as fallback
-          console.log(`Rainfall for ${planningAreaId}: ${avgRainfall.toFixed(2)} mm (fallback from max ${maxReading}mm)`);
-        } else {
-          console.log(`Rainfall for ${planningAreaId}: ${avgRainfall.toFixed(2)} mm (IDW, max reading: ${maxReading}mm)`);
+          if (maxReading > 0) {
+            // Real-time calculation for the area using IDW
+            let totalRainfall = 0;
+            const samplePoints = 25;
+            for (let i = 0; i < samplePoints; i++) {
+              const x = (Math.random() - 0.5) * width;
+              const z = (Math.random() - 0.5) * height;
+              totalRainfall += getRainfallAt(x, z);
+            }
+            avgRainfall = totalRainfall / samplePoints;
+            console.log(`Rainfall for ${planningAreaId}: ${avgRainfall.toFixed(2)} mm (IDW interpolation, max reading: ${maxReading}mm)`);
+          } else {
+            console.log(`Rainfall for ${planningAreaId}: 0.00 mm (no rain detected)`);
+          }
         }
       } else {
-        console.log(`Rainfall for ${planningAreaId}: 0.00 mm (no rain detected)`);
+        console.warn(`Planning area not found: ${planningAreaId}`);
       }
     }
 
     // If no rainfall, don't create any particles
-    // Use very low threshold to show even light drizzle
-    if (avgRainfall < 0.01) {
+    // Use low threshold (0.05mm) to show even very light drizzle
+    // This matches the actual calculated rainfall for this specific area
+    if (avgRainfall < 0.05) {
       return {
         positions: new Float32Array(0),
         colors: new Float32Array(0),

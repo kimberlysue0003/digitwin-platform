@@ -18,7 +18,7 @@ interface Building {
 
 // Prepared building with pre-created geometry
 interface PreparedBuilding {
-  geometry: THREE.ExtrudeGeometry;
+  geometry: THREE.BufferGeometry;
   position: [number, number, number];
   rotation: [number, number, number];
   material: {
@@ -47,6 +47,18 @@ interface BuildingData {
     waterCount: number;
     greenCount: number;
   };
+}
+
+interface WorkerBuildingResult {
+  positions: Float32Array;
+  normals: Float32Array;
+  uvs: Float32Array | null;
+  indices: Uint32Array | Uint16Array | null;
+}
+
+interface WorkerResponse {
+  requestId: string;
+  buildings: WorkerBuildingResult[];
 }
 
 // Helper function to calculate material properties based on building height
@@ -104,6 +116,14 @@ export function BuildingsLayer() {
   const animationInitialized = useRef(false);
   const effectsReadyRef = useRef(false);
   const effectsTimeoutRef = useRef<number | null>(null);
+  const workerRef = useRef<Worker | null>(null);
+  const workerRequestIdRef = useRef(0);
+  const pendingRequestsRef = useRef(
+    new Map<string, { cacheKey: string; buildings: Building[] }>()
+  );
+  const geometryCacheRef = useRef<Record<string, PreparedBuilding[]>>({});
+  const selectedAreaRef = useRef(selectedPlanningArea);
+  const geometryWorkerSupported = typeof Worker !== 'undefined';
   const BUILDING_EFFECT_DELAY = 2600; // slightly longer than growth animation
   const clearEffectsTimeout = () => {
     if (effectsTimeoutRef.current !== null) {
@@ -111,6 +131,92 @@ export function BuildingsLayer() {
       effectsTimeoutRef.current = null;
     }
   };
+
+  useEffect(() => {
+    selectedAreaRef.current = selectedPlanningArea;
+  }, [selectedPlanningArea]);
+
+  useEffect(() => {
+    if (!geometryWorkerSupported || workerRef.current) {
+      return;
+    }
+
+    const worker = new Worker(
+      new URL('../../workers/buildingGeometryWorker.ts', import.meta.url),
+      { type: 'module' }
+    );
+    workerRef.current = worker;
+
+    worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
+      const { requestId, buildings: results } = event.data;
+      const pending = pendingRequestsRef.current.get(requestId);
+      if (!pending) {
+        return;
+      }
+
+      pendingRequestsRef.current.delete(requestId);
+      const { cacheKey, buildings: originalBuildings } = pending;
+
+      const prepared: PreparedBuilding[] = results.map((result, index) => {
+        const geometry = new THREE.BufferGeometry();
+        if (result.positions.length > 0) {
+          geometry.setAttribute(
+            'position',
+            new THREE.BufferAttribute(result.positions, 3)
+          );
+        }
+        if (result.normals.length > 0) {
+          geometry.setAttribute(
+            'normal',
+            new THREE.BufferAttribute(result.normals, 3)
+          );
+        } else {
+          geometry.computeVertexNormals();
+        }
+        if (result.uvs && result.uvs.length > 0) {
+          geometry.setAttribute('uv', new THREE.BufferAttribute(result.uvs, 2));
+        }
+        if (result.indices && result.indices.length > 0) {
+          geometry.setIndex(new THREE.BufferAttribute(result.indices, 1));
+        }
+        geometry.computeBoundingBox();
+        geometry.computeBoundingSphere();
+
+        const buildingData = originalBuildings[index] ?? { height: 0 };
+        const material = calculateMaterialProps(buildingData.height, index);
+
+        return {
+          geometry,
+          position: [0, 0.5, 0],
+          rotation: [-Math.PI / 2, 0, 0],
+          material,
+        };
+      });
+
+      geometryCacheRef.current[cacheKey] = prepared;
+
+      const [areaId] = cacheKey.split(':');
+      if (areaId === selectedAreaRef.current) {
+        setPreparedBuildings(prepared.map((item) => ({ ...item })));
+        setGeometryProgress(100);
+        setReadyToDisplay(true);
+        setGeometryProgress(100);
+        clearEffectsTimeout();
+        effectsReadyRef.current = true;
+        setEffectsReady(true);
+      }
+    };
+
+    worker.onerror = (event) => {
+      console.error('Building geometry worker error:', event);
+    };
+
+    return () => {
+      worker.terminate();
+      workerRef.current = null;
+      pendingRequestsRef.current.clear();
+    };
+  }, [geometryWorkerSupported]);
 
   useEffect(() => {
     setLoading(true);
@@ -194,8 +300,48 @@ export function BuildingsLayer() {
     loadBuildings();
   }, [selectedPlanningArea]);
 
+  useEffect(() => {
+    if (!geometryWorkerSupported || !workerRef.current || loading) {
+      return;
+    }
+
+    if (buildings.length === 0) {
+      setPreparedBuildings([]);
+      setReadyToDisplay(false);
+      setGeometryProgress(0);
+      return;
+    }
+
+    const cacheKey = `${selectedPlanningArea}:${buildings.length}`;
+    const cached = geometryCacheRef.current[cacheKey];
+    if (cached) {
+      setPreparedBuildings(cached.map((item) => ({ ...item })));
+      setReadyToDisplay(true);
+      setGeometryProgress(100);
+      if (!effectsReadyRef.current) {
+        effectsReadyRef.current = true;
+        setEffectsReady(true);
+      }
+      return;
+    }
+
+    setReadyToDisplay(false);
+    setGeometryProgress(15);
+    clearEffectsTimeout();
+    effectsReadyRef.current = false;
+    setEffectsReady(false);
+
+    const requestId = `${selectedPlanningArea}-${Date.now()}-${workerRequestIdRef.current++}`;
+    pendingRequestsRef.current.set(requestId, { cacheKey, buildings: [...buildings] });
+    workerRef.current.postMessage({ requestId, buildings });
+  }, [geometryWorkerSupported, buildings, selectedPlanningArea, loading]);
+
   // Prepare geometries asynchronously after buildings data is loaded
   useEffect(() => {
+    if (geometryWorkerSupported) {
+      return;
+    }
+
     if (buildings.length === 0) {
       setPreparedBuildings([]);
       setReadyToDisplay(true);

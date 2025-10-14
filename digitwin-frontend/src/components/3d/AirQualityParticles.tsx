@@ -94,33 +94,43 @@ export function AirQualityParticles({ planningAreaId }: Props) {
         tempPositions.push(x, particleY, z);
         tempInitialPositions.push(x, particleY, z);
 
-        // Align colors to 2D thresholds: <12 green, 12-25 yellow-green, 25-35 yellow, 35-55 orange, >=55 red
+        // EPA AQI color mapping (matches DataCards.tsx and EPA 2024 standards)
         let r: number, g: number, b: number;
-        if (pm25 < 12) {
-          // #16a34a
-          r = 0x16 / 255;
-          g = 0xa3 / 255;
-          b = 0x4a / 255;
-        } else if (pm25 < 25) {
-          // #84cc16
-          r = 0x84 / 255;
-          g = 0xcc / 255;
-          b = 0x16 / 255;
-        } else if (pm25 < 35) {
-          // #facc15
-          r = 0xfa / 255;
-          g = 0xcc / 255;
-          b = 0x15 / 255;
-        } else if (pm25 < 55) {
-          // #f97316
-          r = 0xf9 / 255;
-          g = 0x73 / 255;
-          b = 0x16 / 255;
-        } else {
-          // #ef4444
+        if (pm25 >= 250.5) {
+          // Hazardous (301+ AQI): maroon/brown-red #7e1e22
+          r = 0x7e / 255;
+          g = 0x1e / 255;
+          b = 0x22 / 255;
+        } else if (pm25 >= 150.5) {
+          // Very Unhealthy (201-300 AQI): purple #9333ea
+          r = 0x93 / 255;
+          g = 0x33 / 255;
+          b = 0xea / 255;
+        } else if (pm25 >= 55.5) {
+          // Unhealthy (151-200 AQI): red #ef4444
           r = 0xef / 255;
           g = 0x44 / 255;
           b = 0x44 / 255;
+        } else if (pm25 >= 35) {
+          // Unhealthy for Sensitive Groups (101-150 AQI): orange #f97316
+          r = 0xf9 / 255;
+          g = 0x73 / 255;
+          b = 0x16 / 255;
+        } else if (pm25 >= 25) {
+          // Moderate (51-100 AQI): yellow #facc15
+          r = 0xfa / 255;
+          g = 0xcc / 255;
+          b = 0x15 / 255;
+        } else if (pm25 >= 12) {
+          // Moderate (51-100 AQI): yellow-green #84cc16
+          r = 0x84 / 255;
+          g = 0xcc / 255;
+          b = 0x16 / 255;
+        } else {
+          // Good (0-50 AQI): green #16a34a
+          r = 0x16 / 255;
+          g = 0xa3 / 255;
+          b = 0x4a / 255;
         }
 
         tempColors.push(r, g, b);
