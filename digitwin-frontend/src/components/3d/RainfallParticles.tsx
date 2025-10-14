@@ -1,22 +1,10 @@
 // Rainfall particle effect - realistic rain simulation based on intensity
-import { useRef, useMemo, useEffect, useState } from 'react';
+import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useEnvironmentStore } from '../../stores/environmentStore';
 import { useMapBounds } from '../../hooks/useMapBounds';
 import { PLANNING_AREAS } from '../../data/planningAreas';
-
-interface Building {
-  footprint: [number, number][];
-  height: number;
-}
-
-interface BuildingData {
-  planningArea: string;
-  id: string;
-  buildingCount: number;
-  buildings: Building[];
-}
 
 interface Props {
   planningAreaId: string;
@@ -25,62 +13,11 @@ interface Props {
 export function RainfallParticles({ planningAreaId }: Props) {
   const particlesRef = useRef<THREE.LineSegments>(null);
   const { data } = useEnvironmentStore();
-  const [buildingBounds, setBuildingBounds] = useState<{ minX: number; maxX: number; minZ: number; maxZ: number } | null>(null);
   const mapBounds = useMapBounds(planningAreaId);
-
-  // Create circular particle texture (same as HeatParticles)
-  const raindropTexture = useMemo(() => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 64;
-    canvas.height = 64;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-
-    const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-    gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
-    gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.5)');
-    gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 64, 64);
-
-    return new THREE.CanvasTexture(canvas);
-  }, []);
-
-
-  // Load building data to get bounds
-  useEffect(() => {
-    const loadBuildingBounds = async () => {
-      try {
-        const response = await fetch(`/buildings/${planningAreaId}.json`);
-        if (!response.ok) return;
-
-        const buildingData: BuildingData = await response.json();
-
-        let minX = Infinity, maxX = -Infinity;
-        let minZ = Infinity, maxZ = -Infinity;
-
-        buildingData.buildings.forEach(building => {
-          building.footprint.forEach(([x, z]) => {
-            minX = Math.min(minX, x);
-            maxX = Math.max(maxX, x);
-            minZ = Math.min(minZ, z);
-            maxZ = Math.max(maxZ, z);
-          });
-        });
-
-        setBuildingBounds({ minX, maxX, minZ, maxZ });
-      } catch (error) {
-        console.error('Failed to load building bounds:', error);
-      }
-    };
-
-    loadBuildingBounds();
-  }, [planningAreaId]);
 
   // Create rain particle system
   const { positions, colors, velocities, initialPositions } = useMemo(() => {
-    if (!data?.rainfall?.readings || !data?.rainfall?.stations || !buildingBounds || !mapBounds.isLoaded) {
+    if (!data?.rainfall?.readings || !data?.rainfall?.stations || !mapBounds.isLoaded) {
       return {
         positions: new Float32Array(0),
         colors: new Float32Array(0),
@@ -289,16 +226,18 @@ export function RainfallParticles({ planningAreaId }: Props) {
     console.log(`Raindrop color: RGB(${(r * 255).toFixed(0)}, ${(g * 255).toFixed(0)}, ${(b * 255).toFixed(0)})`);
 
     return { positions, colors, velocities, initialPositions };
-  }, [data, buildingBounds, mapBounds, planningAreaId]);
+  }, [data, mapBounds, planningAreaId]);
 
   // Animate rain falling
   useFrame((state, delta) => {
-    if (!particlesRef.current || !buildingBounds) return;
+    if (!particlesRef.current || !mapBounds.isLoaded) return;
 
     const positionsAttr = particlesRef.current.geometry.attributes.position;
     const positions = positionsAttr.array as Float32Array;
 
-    const { minX, maxX, minZ, maxZ } = buildingBounds;
+    const { width, height } = mapBounds;
+    const halfWidth = width / 2;
+    const halfHeight = height / 2;
 
     // Each raindrop has 2 vertices (line segment)
     const numDrops = velocities.length / 3;
@@ -322,13 +261,13 @@ export function RainfallParticles({ planningAreaId }: Props) {
       // Check if top vertex hits ground or goes out of bounds
       if (
         positions[i * 6 + 1] < 0 ||
-        positions[i * 6] < minX || positions[i * 6] > maxX ||
-        positions[i * 6 + 2] < minZ || positions[i * 6 + 2] > maxZ
+        positions[i * 6] < -halfWidth || positions[i * 6] > halfWidth ||
+        positions[i * 6 + 2] < -halfHeight || positions[i * 6 + 2] > halfHeight
       ) {
         // Respawn at top with new random position
-        const newX = minX + Math.random() * (maxX - minX);
+        const newX = (Math.random() - 0.5) * width;
         const newY = initialPositions[i * 3 + 1];
-        const newZ = minZ + Math.random() * (maxZ - minZ);
+        const newZ = (Math.random() - 0.5) * height;
 
         // Top vertex
         positions[i * 6] = newX;

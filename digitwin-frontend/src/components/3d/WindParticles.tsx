@@ -1,20 +1,9 @@
 // Wind flow particle system for 3D view
-import { useRef, useMemo, useEffect, useState } from 'react';
+import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useEnvironmentStore } from '../../stores/environmentStore';
-
-interface Building {
-  footprint: [number, number][];
-  height: number;
-}
-
-interface BuildingData {
-  planningArea: string;
-  id: string;
-  buildingCount: number;
-  buildings: Building[];
-}
+import { useMapBounds } from '../../hooks/useMapBounds';
 
 interface Props {
   planningAreaId: string;
@@ -23,7 +12,7 @@ interface Props {
 export function WindParticles({ planningAreaId }: Props) {
   const particlesRef = useRef<THREE.Points>(null);
   const { data } = useEnvironmentStore();
-  const [buildingBounds, setBuildingBounds] = useState<{ minX: number; maxX: number; minZ: number; maxZ: number } | null>(null);
+  const mapBounds = useMapBounds(planningAreaId);
 
   // Create circular particle texture
   const particleTexture = useMemo(() => {
@@ -44,39 +33,9 @@ export function WindParticles({ planningAreaId }: Props) {
     return new THREE.CanvasTexture(canvas);
   }, []);
 
-  // Load building data to get bounds
-  useEffect(() => {
-    const loadBuildingBounds = async () => {
-      try {
-        const response = await fetch(`/buildings/${planningAreaId}.json`);
-        if (!response.ok) return;
-
-        const buildingData: BuildingData = await response.json();
-
-        let minX = Infinity, maxX = -Infinity;
-        let minZ = Infinity, maxZ = -Infinity;
-
-        buildingData.buildings.forEach(building => {
-          building.footprint.forEach(([x, z]) => {
-            minX = Math.min(minX, x);
-            maxX = Math.max(maxX, x);
-            minZ = Math.min(minZ, z);
-            maxZ = Math.max(maxZ, z);
-          });
-        });
-
-        setBuildingBounds({ minX, maxX, minZ, maxZ });
-      } catch (error) {
-        console.error('Failed to load building bounds:', error);
-      }
-    };
-
-    loadBuildingBounds();
-  }, [planningAreaId]);
-
   // Create wind flow particle system
   const { positions, colors, velocities, initialPositions } = useMemo(() => {
-    if (!data?.wind || !buildingBounds) {
+    if (!data?.wind || !mapBounds.isLoaded) {
       return {
         positions: new Float32Array(0),
         colors: new Float32Array(0),
@@ -87,10 +46,10 @@ export function WindParticles({ planningAreaId }: Props) {
 
     const { stations, speed: speedReadings, direction: directionReadings } = data.wind;
 
-    // Use building bounds to distribute particles
-    const { minX, maxX, minZ, maxZ } = buildingBounds;
-    const areaWidth = maxX - minX;
-    const areaHeight = maxZ - minZ;
+    // Use map bounds to distribute particles
+    const { width, height } = mapBounds;
+    const areaWidth = width;
+    const areaHeight = height;
 
     // Create grid based on actual area size
     const gridSize = 15;
@@ -142,8 +101,8 @@ export function WindParticles({ planningAreaId }: Props) {
     let i = 0;
     for (let gx = 0; gx < gridSize; gx++) {
       for (let gz = 0; gz < gridSize; gz++) {
-        const baseX = minX + (gx / gridSize) * areaWidth;
-        const baseZ = minZ + (gz / gridSize) * areaHeight;
+        const baseX = (-areaWidth / 2) + (gx / gridSize) * areaWidth;
+        const baseZ = (-areaHeight / 2) + (gz / gridSize) * areaHeight;
 
         const wind = getWindAt(baseX, baseZ);
         const speedKnots = wind.speed;
@@ -195,19 +154,21 @@ export function WindParticles({ planningAreaId }: Props) {
       }
     }
 
-    console.log(`Created ${i} wind particles in ${gridSize}x${gridSize}x${layers} grid within building bounds`);
+    console.log(`Created ${i} wind particles in ${gridSize}x${gridSize}x${layers} grid using map bounds`);
 
     return { positions, colors, velocities, initialPositions };
-  }, [data, buildingBounds]);
+  }, [data, mapBounds]);
 
   // Animate particles following wind flow
   useFrame((state, delta) => {
-    if (!particlesRef.current || !buildingBounds) return;
+    if (!particlesRef.current || !mapBounds.isLoaded) return;
 
     const positionsAttr = particlesRef.current.geometry.attributes.position;
     const positions = positionsAttr.array as Float32Array;
 
-    const { minX, maxX, minZ, maxZ } = buildingBounds;
+    const { width, height } = mapBounds;
+    const halfWidth = width / 2;
+    const halfHeight = height / 2;
 
     for (let i = 0; i < positions.length / 3; i++) {
       positions[i * 3] += velocities[i * 3] * delta * 10;
@@ -216,8 +177,8 @@ export function WindParticles({ planningAreaId }: Props) {
 
       // Reset when particle leaves bounds
       if (
-        positions[i * 3] < minX || positions[i * 3] > maxX ||
-        positions[i * 3 + 2] < minZ || positions[i * 3 + 2] > maxZ
+        positions[i * 3] < -halfWidth || positions[i * 3] > halfWidth ||
+        positions[i * 3 + 2] < -halfHeight || positions[i * 3 + 2] > halfHeight
       ) {
         positions[i * 3] = initialPositions[i * 3];
         positions[i * 3 + 1] = initialPositions[i * 3 + 1];

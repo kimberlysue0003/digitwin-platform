@@ -9,13 +9,6 @@ interface NaturalFeature {
   coordinates: [number, number][];
 }
 
-interface NaturalFeaturesData {
-  waterBodies: NaturalFeature[];
-  greenSpaces: NaturalFeature[];
-  waterCount: number;
-  greenCount: number;
-}
-
 interface Props {
   planningAreaId: string;
 }
@@ -26,22 +19,13 @@ export function NaturalFeatures2DLayer({ planningAreaId }: Props) {
   const waterMaterialsRef = useRef<THREE.MeshBasicMaterial[]>([]);
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const response = await fetch(`/buildings/${planningAreaId}.json`);
-        if (!response.ok) return;
+    // TODO: Load natural features from backend API once available
+    // For now, natural features are not displayed
+    // Backend endpoint needed: /api/natural-features/${planningAreaId}
 
-        const data = await response.json();
-        if (data.naturalFeatures) {
-          setWaterBodies(data.naturalFeatures.waterBodies || []);
-          setGreenSpaces(data.naturalFeatures.greenSpaces || []);
-        }
-      } catch (error) {
-        console.error('Failed to load natural features:', error);
-      }
-    };
-
-    loadData();
+    // Reset state when planning area changes
+    setWaterBodies([]);
+    setGreenSpaces([]);
   }, [planningAreaId]);
 
   // Animate water opacity for flowing effect
