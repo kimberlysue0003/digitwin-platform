@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
+import { buildApiUrl, API_CONFIG } from '../../config/api';
 
 interface Props {
   planningAreaId: string;
@@ -14,7 +15,7 @@ export function GroundMapLayer({ planningAreaId }: Props) {
   useEffect(() => {
     const loadMetadata = async () => {
       try {
-        const response = await fetch(`http://localhost:8080/api/map-textures/${planningAreaId}`);
+        const response = await fetch(buildApiUrl(`/api/map-textures/${planningAreaId}`));
         if (!response.ok) {
           console.warn(`No map texture metadata for ${planningAreaId}`);
           return;
@@ -35,7 +36,7 @@ export function GroundMapLayer({ planningAreaId }: Props) {
         };
 
         setMetadata(transformedData);
-        setTextureUrl(`http://localhost:8080${data.png_file_path}`);
+        setTextureUrl(`${API_CONFIG.BASE_URL}${data.png_file_path}`);
       } catch (error) {
         console.error('Failed to load map texture metadata:', error);
       }

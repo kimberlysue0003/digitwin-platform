@@ -9,6 +9,7 @@ import { TemperatureFog } from './TemperatureFog';
 import { WindStreamlines } from './WindStreamlines';
 import { AirQualityParticles } from './AirQualityParticles';
 import { RainfallParticles } from './RainfallParticles';
+import { buildApiUrl } from '../../config/api';
 
 // Building representation from JSON data
 interface Building {
@@ -237,7 +238,7 @@ export function BuildingsLayer() {
         console.log(`🌐 Loading buildings from API...`);
 
         // First, get chunk info
-        const infoResponse = await fetch(`http://localhost:8080/api/buildings/${selectedPlanningArea}/chunks/info`);
+        const infoResponse = await fetch(`${buildApiUrl("/api/buildings")}/${selectedPlanningArea}/chunks/info`);
         if (!infoResponse.ok) {
           console.warn(`No building data found for ${selectedPlanningArea}`);
           setBuildings([]);
@@ -257,7 +258,7 @@ export function BuildingsLayer() {
         const allChunkPromises = [];
         for (let chunkIndex = 0; chunkIndex < total_chunks; chunkIndex++) {
           allChunkPromises.push(
-            fetch(`http://localhost:8080/api/buildings/${selectedPlanningArea}/chunks/${chunkIndex}`)
+            fetch(`${buildApiUrl("/api/buildings")}/${selectedPlanningArea}/chunks/${chunkIndex}`)
               .then(res => res.ok ? res.json() : null)
               .then(data => data ? data.data : [])
               .catch(err => {

@@ -1,7 +1,7 @@
 // Test page to verify connection to Go backend
 import { useEffect, useState } from 'react';
 import { checkHealth, fetchPlanningAreas, fetchBuildingsByArea } from '../services/apiService';
-import { buildWebSocketUrl } from '../config/api';
+import { buildWebSocketUrl, API_CONFIG } from '../config/api';
 
 export function TestConnection() {
   const [healthStatus, setHealthStatus] = useState<string>('Checking...');
@@ -124,8 +124,8 @@ export function TestConnection() {
         }}>
           <h2 style={{ fontSize: '18px', marginBottom: '10px', color: '#374151' }}>Configuration</h2>
           <div style={{ fontSize: '13px', color: '#6b7280', fontFamily: 'monospace' }}>
-            <div>API URL: http://localhost:8080</div>
-            <div>WebSocket: ws://localhost:8080/ws</div>
+            <div>API URL: {API_CONFIG.BASE_URL}</div>
+            <div>WebSocket: {API_CONFIG.WS_URL}</div>
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 // Hook for loading map metadata and alpha channel data
 // Provides reusable map boundary detection for particle systems
 import { useState, useEffect } from 'react';
+import { buildApiUrl, API_CONFIG } from '../config/api';
 
 interface MapMetadata {
   bounds: [[number, number], [number, number]]; // [[minLat, minLng], [maxLat, maxLng]]
@@ -30,7 +31,7 @@ export function useMapBounds(planningAreaId: string): MapBounds {
     const loadMapData = async () => {
       try {
         // Load metadata from backend API
-        const metaResponse = await fetch(`http://localhost:8080/api/map-textures/${planningAreaId}`);
+        const metaResponse = await fetch(buildApiUrl(`/api/map-textures/${planningAreaId}`));
         if (!metaResponse.ok) {
           console.warn(`No map metadata for ${planningAreaId}`);
           return;
@@ -70,7 +71,7 @@ export function useMapBounds(planningAreaId: string): MapBounds {
           setTextureHeight(canvas.height);
         };
         img.onerror = () => console.error('Failed to load map texture');
-        img.src = `http://localhost:8080${data.png_file_path}`;
+        img.src = `${API_CONFIG.BASE_URL}${data.png_file_path}`;
       } catch (error) {
         console.error('Failed to load map data:', error);
       }

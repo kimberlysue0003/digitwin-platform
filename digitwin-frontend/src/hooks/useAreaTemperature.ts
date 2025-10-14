@@ -1,6 +1,7 @@
 // Hook to calculate area temperature using same logic as DataCards
 import { useMemo, useEffect, useState } from 'react';
 import { useEnvironmentStore } from '../stores/environmentStore';
+import { buildApiUrl } from '../config/api';
 
 export function useAreaTemperature(planningAreaId: string): number | null {
   const { data } = useEnvironmentStore();
@@ -10,7 +11,7 @@ export function useAreaTemperature(planningAreaId: string): number | null {
   useEffect(() => {
     const loadMetadata = async () => {
       try {
-        const response = await fetch(`http://localhost:8080/api/map-textures/${planningAreaId}`);
+        const response = await fetch(buildApiUrl(`/api/map-textures/${planningAreaId}`));
         if (!response.ok) return;
         const apiResponse = await response.json();
         const data = apiResponse.data;
