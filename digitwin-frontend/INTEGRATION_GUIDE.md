@@ -203,4 +203,189 @@ CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 
 ---
 
+## ⚠️ 常见启动问题与解决方案
+
+### 问题 1: Go 文件编码错误 (UTF-16)
+
+**症状：**
+```
+unexpected NUL in input
+failed to read file
+```
+
+**原因：** Go 源文件被意外保存为 UTF-16 编码，而 Go 编译器只支持 UTF-8。
+
+**解决方案：**
+```bash
+cd digitwin-backend-go
+
+# 转换文件编码为 UTF-8
+iconv -f UTF-16LE -t UTF-8 internal/services/building_service.go > temp.go && mv temp.go internal/services/building_service.go
+iconv -f UTF-16LE -t UTF-8 internal/handlers/building_handler.go > temp.go && mv temp.go internal/handlers/building_handler.go
+iconv -f UTF-16LE -t UTF-8 internal/routes/routes.go > temp.go && mv temp.go internal/routes/routes.go
+
+# 或者直接从 git 恢复
+git checkout HEAD -- internal/services/building_service.go internal/handlers/building_handler.go internal/routes/routes.go
+```
+
+### 问题 2: 数据库连接失败 (端口错误)
+
+**症状：**
+```
+failed to connect to database: localhost:5432
+Password authentication failed
+```
+
+**原因：** Go 后端从错误的目录启动，`.env` 文件没有被正确加载，导致使用默认端口 5432 而非配置的 5433。
+
+**解决方案：**
+```bash
+# ❌ 错误的启动方式（在 cmd/server 目录）
+cd digitwin-backend-go/cmd/server
+go run main.go  # 找不到 .env 文件
+
+# ✅ 正确的启动方式（在项目根目录）
+cd digitwin-backend-go
+go run cmd/server/main.go  # 能正确读取 .env 文件
+```
+
+**配置检查：**
+```bash
+# 确认 .env 文件存在且配置正确
+cat digitwin-backend-go/.env
+
+# 应该包含：
+# DB_PORT=5433  # PostgreSQL 运行在 5433 端口
+```
+
+### 问题 3: Frontend 端口冲突
+
+**症状：**
+```
+Port 5173 is in use, trying another one...
+Local: http://localhost:5174/
+```
+
+**原因：** 默认端口 5173 被占用，Vite 自动切换到 5174。
+
+**影响：** 无影响，Vite 会自动选择可用端口。
+
+**注意：** 记录实际使用的端口，更新浏览器访问地址。
+
+### 问题 4: 后台进程管理
+
+**查看运行中的后台进程：**
+```bash
+# 使用 BashOutput 工具查看进程输出
+# 进程 ID 会在启动时显示
+
+# 示例进程 ID：
+# - Go Backend: 7682ec
+# - Frontend: 8fe417
+```
+
+**停止后台进程：**
+```bash
+# 在 Claude Code 中使用 KillShell 工具
+# 或者手动查找并结束进程
+
+# Windows:
+taskkill /F /IM go.exe
+taskkill /F /IM node.exe
+
+# Linux/Mac:
+pkill -f "go run"
+pkill -f "vite"
+```
+
+### 问题 5: Docker 容器未启动
+
+**症状：**
+```
+Failed to connect to database
+connection refused
+```
+
+**检查容器状态：**
+```bash
+docker ps --filter "name=digitwin"
+
+# 应该看到：
+# digitwin-postgres   Up X minutes (healthy)
+# digitwin-redis      Up X minutes (healthy)
+```
+
+**启动容器：**
+```bash
+docker start digitwin-postgres digitwin-redis
+
+# 等待容器变为 healthy 状态（约 10-30 秒）
+docker ps --filter "name=digitwin"
+```
+
+## 📋 完整启动流程清单
+
+### 1️⃣ 启动 Docker 容器
+```bash
+# 检查容器状态
+docker ps --filter "name=digitwin"
+
+# 如果没有运行，启动容器
+docker start digitwin-postgres digitwin-redis
+
+# 验证健康状态
+docker ps --filter "name=digitwin" --format "{{.Names}}\t{{.Status}}"
+```
+
+### 2️⃣ 启动 Go 后端
+```bash
+# ⚠️ 重要：必须在项目根目录启动
+cd digitwin-backend-go
+
+# 检查 .env 文件存在
+ls -la .env
+
+# 启动后端
+go run cmd/server/main.go
+
+# 验证启动成功
+curl http://localhost:8080/health
+```
+
+**预期输出：**
+```json
+{"success":true,"data":{"database":{"status":"healthy"},"redis":{"status":"healthy"},"status":"healthy"}}
+```
+
+### 3️⃣ 启动前端
+```bash
+cd digitwin-frontend
+
+# 启动开发服务器
+npm run dev
+
+# 访问前端（记录实际端口）
+# Local: http://localhost:5173/ 或 5174/
+```
+
+### 4️⃣ 验证所有服务
+
+**后端健康检查：**
+```bash
+curl http://localhost:8080/health
+```
+
+**前端页面：**
+```bash
+# 打开浏览器访问
+# http://localhost:5173 或 http://localhost:5174
+```
+
+**Docker 容器：**
+```bash
+docker ps --filter "name=digitwin"
+```
+
+---
+
 **准备就绪！** 🎉 现在你可以启动前端并测试与 Go 后端的连接了。
