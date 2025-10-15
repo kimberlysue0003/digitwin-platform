@@ -30,8 +30,8 @@ export function RainfallParticles({ planningAreaId }: Props) {
     const { width, height, textureWidth, textureHeight, isNonTransparent } = mapBounds;
 
     // If no rainfall, don't create any particles
-    // Use very low threshold (0.01mm) to show even trace amounts
-    if (avgRainfall < 0.01) {
+    // Use very low threshold (0.001mm) to show even trace amounts
+    if (avgRainfall < 0.001) {
       return {
         positions: new Float32Array(0),
         colors: new Float32Array(0),
@@ -41,22 +41,23 @@ export function RainfallParticles({ planningAreaId }: Props) {
     }
 
     // Adjust particle count based on rainfall intensity
-    // Singapore rainfall scale (mm/hour):
-    // 0.1-1mm: Very light drizzle
-    // 1-5mm: Light rain
-    // 5-10mm: Moderate rain
-    // 10-20mm: Heavy rain
-    // 20+mm: Very heavy/torrential rain
+    // Adjusted rainfall scale for Singapore (mm/hour):
+    // 0.01-0.05mm: Very light drizzle
+    // 0.05-0.1mm: Light drizzle
+    // 0.1-0.3mm: Light rain
+    // 0.3-0.8mm: Moderate rain
+    // 0.8-1.5mm: Heavy rain
+    // 1.5+mm: Very heavy/torrential rain
     let particleMultiplier = 1;
-    if (avgRainfall < 0.5) {
-      particleMultiplier = 0.3; // Very light drizzle (100-600 particles)
-    } else if (avgRainfall < 1) {
+    if (avgRainfall < 0.05) {
+      particleMultiplier = 0.3; // Very light drizzle (600 particles)
+    } else if (avgRainfall < 0.1) {
       particleMultiplier = 0.5; // Light drizzle (1000 particles)
-    } else if (avgRainfall < 3) {
+    } else if (avgRainfall < 0.3) {
       particleMultiplier = 1; // Light rain (2000 particles)
-    } else if (avgRainfall < 8) {
+    } else if (avgRainfall < 0.8) {
       particleMultiplier = 2; // Moderate rain (4000 particles)
-    } else if (avgRainfall < 15) {
+    } else if (avgRainfall < 1.5) {
       particleMultiplier = 3; // Heavy rain (6000 particles)
     } else {
       particleMultiplier = 4; // Very heavy/torrential (8000 particles)
@@ -72,22 +73,22 @@ export function RainfallParticles({ planningAreaId }: Props) {
     const tempInitialPositions: number[] = [];
 
     // Color based on rainfall intensity
-    // For very light rain (< 0.5mm), use more visible bright cyan/white
+    // For very light rain (< 0.05mm), use more visible bright cyan/white
     // to make drizzle stand out against the map background
     let r, g, b;
-    if (avgRainfall < 0.5) {
+    if (avgRainfall < 0.05) {
       // Very light drizzle - bright cyan/white for high visibility
       r = 0xd0 / 255; g = 0xf5 / 255; b = 0xff / 255;
-    } else if (avgRainfall < 2) {
+    } else if (avgRainfall < 0.2) {
       // Light rain - light blue
       r = 0xba / 255; g = 0xe6 / 255; b = 0xfd / 255;
-    } else if (avgRainfall < 5) {
+    } else if (avgRainfall < 0.5) {
       // Moderate rain - medium blue
       r = 0x7d / 255; g = 0xd3 / 255; b = 0xfc / 255;
-    } else if (avgRainfall < 10) {
+    } else if (avgRainfall < 1.0) {
       // Heavy rain - blue
       r = 0x38 / 255; g = 0xbd / 255; b = 0xf8 / 255;
-    } else if (avgRainfall < 20) {
+    } else if (avgRainfall < 2.0) {
       // Very heavy rain - deep blue
       r = 0x0e / 255; g = 0xa5 / 255; b = 0xe9 / 255;
     } else {
