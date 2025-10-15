@@ -54,23 +54,21 @@ jobs:
             tar xzf digitwin-backend-go/deploy.tar.gz -C digitwin-backend-go/
             cd digitwin-backend-go
 
-            # Stop and remove old container
-            echo "Stopping old container..."
-            docker stop digitwin-backend-go || true
-            docker rm digitwin-backend-go || true
+            # Stop and remove old containers
+            echo "Cleaning up old containers..."
+            docker stop digitwin-backend-go digitwin-redis || true
+            docker rm digitwin-backend-go digitwin-redis || true
 
             # Create network if not exists
             docker network create digitwin-net || true
 
-            # Start Redis if not running
-            if ! docker ps | grep -q digitwin-redis; then
-              echo "Starting Redis..."
-              docker run -d \
-                --name digitwin-redis \
-                --network digitwin-net \
-                --restart unless-stopped \
-                redis:7-alpine
-            fi
+            # Start Redis
+            echo "Starting Redis..."
+            docker run -d \
+              --name digitwin-redis \
+              --network digitwin-net \
+              --restart unless-stopped \
+              redis:7-alpine
 
             # Run new container with precompiled binary
             echo "Starting new container..."
