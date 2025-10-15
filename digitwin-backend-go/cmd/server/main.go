@@ -68,6 +68,11 @@ func main() {
 
 	logger.Info("Database tables migrated successfully")
 
+	// Seed database if empty
+	if err := database.SeedDatabase(db); err != nil {
+		logger.Fatal("Failed to seed database", zap.Error(err))
+	}
+
 	// Initialize Redis (optional)
 	var redisClient *redis.Client
 	redisClient = redis.NewClient(&redis.Options{
