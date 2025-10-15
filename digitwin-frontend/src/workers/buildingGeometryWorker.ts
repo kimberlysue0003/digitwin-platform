@@ -76,12 +76,15 @@ const generateGeometry = (building: WorkerBuildingInput): WorkerBuildingOutput |
   const indexAttr = geometry.getIndex();
   let indices: Uint32Array | Uint16Array | null = null;
   if (indexAttr) {
-    const array = indexAttr.array as Uint16Array | Uint32Array | number[];
+    const array = indexAttr.array;
     if (Array.isArray(array)) {
       const typed = array.length > 65535 ? new Uint32Array(array) : new Uint16Array(array);
       indices = typed;
     } else if (array instanceof Uint32Array || array instanceof Uint16Array) {
-      indices = array.slice() as Uint32Array | Uint16Array;
+      const typedArray = array as Uint32Array | Uint16Array;
+      indices = (typedArray.constructor === Uint32Array
+        ? new Uint32Array(typedArray)
+        : new Uint16Array(typedArray)) as Uint32Array | Uint16Array;
     }
   }
 

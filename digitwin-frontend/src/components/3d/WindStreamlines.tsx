@@ -44,7 +44,7 @@ export function WindStreamlines({ planningAreaId }: Props) {
 
   // Get current wind direction and speed from real data
   const currentWind = useMemo(() => {
-    if (!data?.wind?.speed || !data?.wind?.direction) {
+    if (!data?.wind || !data.wind.speed || !data.wind.direction) {
       return { direction: 'N', speed: 5, directionDeg: 0 };
     }
 
