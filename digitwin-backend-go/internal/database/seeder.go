@@ -179,8 +179,6 @@ func seedStreamlines(db *gorm.DB) error {
 			PlanningAreaID: imp.PlanningAreaID,
 			Direction:      imp.Direction,
 			Points:         imp.Points,
-			Source:         "Initial Seed",
-			FetchedAt:      now,
 			CreatedAt:      now,
 		}
 	}
@@ -239,7 +237,6 @@ func seedMapTextures(db *gorm.DB) error {
 			BoundsMinLng:   imp.BoundsMinLng,
 			BoundsMaxLng:   imp.BoundsMaxLng,
 			CreatedAt:      now,
-			UpdatedAt:      now,
 		}
 	}
 
