@@ -87,7 +87,7 @@ jobs:
               -e DB_SSLMODE=require \
               -e REDIS_HOST=digitwin-redis \
               -e REDIS_PORT=6379 \
-              -e SERVER_PORT=3000 \
+              -e PORT=3000 \
               -e TZ=Asia/Singapore \
               --restart unless-stopped \
               alpine:latest \
