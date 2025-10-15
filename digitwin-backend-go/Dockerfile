@@ -14,7 +14,7 @@ RUN go mod download
 COPY . .
 
 # Build binary
-RUN CGO_ENABLED=0 GOOS=linux go build -o server digitwin-backend/cmd/server
+RUN CGO_ENABLED=0 GOOS=linux go build -o server cmd/server/main.go
 
 # Final stage
 FROM alpine:latest
