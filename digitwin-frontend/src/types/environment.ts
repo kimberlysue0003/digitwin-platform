@@ -1,6 +1,7 @@
 // Environment data types from NEA API
 
 export interface WeatherStation {
+  id?: string;
   station_id: string;
   device_id?: string;
   name?: string;

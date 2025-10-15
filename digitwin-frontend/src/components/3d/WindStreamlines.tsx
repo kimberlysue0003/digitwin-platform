@@ -177,14 +177,12 @@ export function WindStreamlines({ planningAreaId }: Props) {
         return (
           <group key={idx}>
             {/* Streamline path - much more visible */}
-            <line geometry={geometry}>
-              <lineBasicMaterial
-                color={speedColor}
-                opacity={0.7}
-                transparent
-                linewidth={3}
-              />
-            </line>
+            <primitive object={new THREE.Line(geometry, new THREE.LineBasicMaterial({
+              color: speedColor,
+              opacity: 0.7,
+              transparent: true,
+              linewidth: 3
+            }))} />
 
             {/* Moving particle - simple glowing sphere */}
             <mesh position={[particlePos.x, particlePos.y, particlePos.z]}>

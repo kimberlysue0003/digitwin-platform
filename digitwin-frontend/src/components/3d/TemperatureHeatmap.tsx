@@ -106,9 +106,10 @@ export function TemperatureHeatmap({ planningAreaId }: Props) {
 
   // Animate heatmap (pulsing effect)
   useFrame(({ clock }) => {
-    if (meshRef.current) {
+    if (meshRef.current && meshRef.current.material) {
       const pulse = Math.sin(clock.elapsedTime * 0.5) * 0.05 + 0.95;
-      meshRef.current.material.opacity = pulse * 0.5;
+      const material = meshRef.current.material as THREE.MeshBasicMaterial;
+      material.opacity = pulse * 0.5;
     }
   });
 

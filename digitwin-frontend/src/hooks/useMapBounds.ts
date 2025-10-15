@@ -40,12 +40,12 @@ export function useMapBounds(planningAreaId: string): MapBounds {
         const data = apiResponse.data;
 
         // Transform API response to expected format
-        const metadataJson = {
+        const metadataJson: MapMetadata = {
           bounds: [
             [data.bounds_min_lat, data.bounds_min_lng],
             [data.bounds_max_lat, data.bounds_max_lng]
-          ],
-          center: [data.center_lat, data.center_lng]
+          ] as [[number, number], [number, number]],
+          center: [data.center_lat, data.center_lng] as [number, number]
         };
         setMetadata(metadataJson);
 

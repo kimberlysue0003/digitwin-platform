@@ -1,0 +1,109 @@
+name: Deploy Backend to EC2 (Simple)
+
+on:
+  push:
+    branches: [ feature/go-backend ]
+    paths:
+      - 'digitwin-backend-go/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+
+            echo "=========================================="
+            echo "Starting deployment..."
+            echo "=========================================="
+
+            # Navigate to project directory
+            cd ~/digitwin-platform || {
+              echo "Project directory not found, cloning..."
+              cd ~
+              git clone -b feature/go-backend https://github.com/kimberlysue0003/digitwin-platform.git
+              cd digitwin-platform
+            }
+
+            # Pull latest code
+            echo "Pulling latest code..."
+            git fetch origin feature/go-backend
+            git reset --hard origin/feature/go-backend
+
+            cd digitwin-backend-go
+
+            # Build new Docker image
+            echo "Building Docker image..."
+            docker build -t digitwin-backend-go:latest .
+
+            # Stop and remove old container
+            echo "Stopping old container..."
+            docker stop digitwin-backend-go || true
+            docker rm digitwin-backend-go || true
+
+            # Create network if not exists
+            docker network create digitwin-net || true
+
+            # Start Redis if not running
+            if ! docker ps | grep -q digitwin-redis; then
+              echo "Starting Redis..."
+              docker run -d \
+                --name digitwin-redis \
+                --network digitwin-net \
+                --restart unless-stopped \
+                redis:7-alpine
+            fi
+
+            # Run new container
+            echo "Starting new container..."
+            docker run -d \
+              --name digitwin-backend-go \
+              --network digitwin-net \
+              -p 3000:3000 \
+              -e DB_HOST=${{ secrets.DB_HOST }} \
+              -e DB_PORT=${{ secrets.DB_PORT }} \
+              -e DB_USER=${{ secrets.DB_USER }} \
+              -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
+              -e DB_NAME=${{ secrets.DB_NAME }} \
+              -e DB_SSLMODE=require \
+              -e REDIS_HOST=digitwin-redis \
+              -e REDIS_PORT=6379 \
+              -e PORT=3000 \
+              --restart unless-stopped \
+              digitwin-backend-go:latest
+
+            # Wait for health check
+            echo "Waiting for backend to be healthy..."
+            sleep 5
+            for i in {1..30}; do
+              if curl -f http://localhost:3000/health > /dev/null 2>&1; then
+                echo "✓ Backend is healthy!"
+                curl http://localhost:3000/health
+                exit 0
+              fi
+              echo "Attempt $i/30: Backend not ready yet..."
+              sleep 2
+            done
+
+            echo "✗ Backend failed to become healthy"
+            docker logs digitwin-backend-go --tail 50
+            exit 1
+
+      - name: Deployment Summary
+        if: success()
+        run: |
+          echo "### ✅ Deployment Successful!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backend URL**: http://18.142.236.220:3000" >> $GITHUB_STEP_SUMMARY
+          echo "- **Health Check**: http://18.142.236.220:3000/health" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch**: feature/go-backend" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployed at**: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY

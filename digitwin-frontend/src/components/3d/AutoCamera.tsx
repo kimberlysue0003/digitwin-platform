@@ -43,7 +43,7 @@ export function AutoCamera({ buildings }: AutoCameraProps) {
 
     // Calculate camera distance based on building area size
     // We want to see the whole area comfortably
-    const fov = camera.fov * (Math.PI / 180); // Convert to radians
+    const fov = ('fov' in camera ? camera.fov : 50) * (Math.PI / 180); // Convert to radians
     const distance = (maxSize / 2) / Math.tan(fov / 2) * 1.5; // 1.5x for padding
 
     // Position camera at 45-degree angle

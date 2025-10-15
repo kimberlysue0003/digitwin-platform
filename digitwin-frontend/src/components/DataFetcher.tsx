@@ -54,11 +54,13 @@ export function DataFetcher() {
             })),
           },
           pollution: {
-            pm25: Object.entries(pm25Data.data?.items?.[0]?.readings?.pm25_one_hourly || {}).map(([region, value]) => ({
-              region: region.toLowerCase(),
-              pm25: typeof value === 'number' ? value : 0,
-              psi: 0,
-            })),
+            pm25: Object.entries(pm25Data.data?.items?.[0]?.readings?.pm25_one_hourly || {})
+              .map(([region, value]) => ({
+                region: region.toLowerCase() as 'north' | 'south' | 'east' | 'west' | 'central',
+                pm25: typeof value === 'number' ? value : 0,
+                psi: 0,
+              }))
+              .filter(reading => ['north', 'south', 'east', 'west', 'central'].includes(reading.region)),
             psi: [],
           },
         };

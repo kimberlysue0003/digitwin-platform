@@ -118,12 +118,12 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
     }
 
     outputs.push(result);
-    transfer.push(result.positions.buffer, result.normals.buffer);
+    transfer.push(result.positions.buffer as ArrayBuffer, result.normals.buffer as ArrayBuffer);
     if (result.uvs) {
-      transfer.push(result.uvs.buffer);
+      transfer.push(result.uvs.buffer as ArrayBuffer);
     }
     if (result.indices) {
-      transfer.push(result.indices.buffer);
+      transfer.push(result.indices.buffer as ArrayBuffer);
     }
   });
 
