@@ -2,9 +2,8 @@
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { useEnvironmentStore } from '../../stores/environmentStore';
 import { useMapBounds } from '../../hooks/useMapBounds';
-import { PLANNING_AREAS } from '../../data/planningAreas';
+import { useAreaRainfall } from '../../hooks/useAreaRainfall';
 
 interface Props {
   planningAreaId: string;
@@ -12,12 +11,14 @@ interface Props {
 
 export function RainfallParticles({ planningAreaId }: Props) {
   const particlesRef = useRef<THREE.LineSegments>(null);
-  const { data } = useEnvironmentStore();
   const mapBounds = useMapBounds(planningAreaId);
+
+  // Use the same rainfall calculation as DataCards (sidebar)
+  const avgRainfall = useAreaRainfall(planningAreaId);
 
   // Create rain particle system
   const { positions, colors, velocities, initialPositions } = useMemo(() => {
-    if (!data?.rainfall?.readings || !data?.rainfall?.stations || !mapBounds.isLoaded) {
+    if (!mapBounds.isLoaded) {
       return {
         positions: new Float32Array(0),
         colors: new Float32Array(0),
@@ -26,102 +27,11 @@ export function RainfallParticles({ planningAreaId }: Props) {
       };
     }
 
-    const { stations, readings } = data.rainfall;
-    const { width, height, textureWidth, textureHeight, isNonTransparent, metadata } = mapBounds;
-
-    // Use area-specific center coordinates from mapMetadata
-    const [centerLat, centerLng] = metadata!.center;
-    const scale = 111000;
-
-    // Helper function: Check if station is within area bounds
-    const isStationInArea = (station: any, bounds: [[number, number], [number, number]]) => {
-      const lat = station.location.latitude;
-      const lng = station.location.longitude;
-      const [[minLat, minLng], [maxLat, maxLng]] = bounds;
-      return lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng;
-    };
-
-    // IDW interpolation for rainfall at position
-    const getRainfallAt = (x: number, z: number): number => {
-      let weightedRain = 0;
-      let totalWeight = 0;
-
-      readings.forEach(reading => {
-        const station = stations.find((s: any) => s.station_id === reading.station_id);
-        if (!station) return;
-
-        const stationX = (station.location.longitude - centerLng) * scale;
-        const stationZ = (station.location.latitude - centerLat) * scale;
-
-        const dx = x - stationX;
-        const dz = z - stationZ;
-        const distance = Math.sqrt(dx * dx + dz * dz);
-
-        // Only consider stations within 10km (10000m)
-        // Use power of 3 for stronger distance decay
-        const maxInfluenceDistance = 10000; // 10km
-        if (distance > maxInfluenceDistance) return;
-
-        // IDW with power=3 for stronger decay
-        const weight = 1 / Math.pow(Math.max(distance, 100), 3);
-        weightedRain += reading.value * weight;
-        totalWeight += weight;
-      });
-
-      return totalWeight > 0 ? weightedRain / totalWeight : 0;
-    };
-
-    // Calculate average rainfall for the area
-    let avgRainfall = 0;
-
-    // SHOWCASE: Override Boon Lay area with heavy rain for demonstration
-    if (planningAreaId === 'boon-lay') {
-      avgRainfall = 25.0; // Heavy rain showcase
-      console.log(`Rainfall for ${planningAreaId}: ${avgRainfall.toFixed(2)} mm (SHOWCASE)`);
-    } else {
-      // Step 1: Check if there's a weather station within this area's bounds
-      const currentArea = PLANNING_AREAS.find(pa => pa.id === planningAreaId);
-
-      if (currentArea) {
-        const localStations = stations.filter((s: any) => isStationInArea(s, currentArea.bounds));
-        const localReadings = readings.filter((r: any) =>
-          localStations.some((s: any) => s.station_id === r.station_id)
-        );
-
-        // Step 2: If we have local station(s), use their data directly (prioritize local measurements)
-        if (localReadings.length > 0) {
-          // Use the average if multiple local stations, or the single value
-          avgRainfall = localReadings.reduce((sum: number, r: any) => sum + r.value, 0) / localReadings.length;
-          console.log(`Rainfall for ${planningAreaId}: ${avgRainfall.toFixed(2)} mm (LOCAL STATION - ${localReadings.length} station(s) in area)`);
-        }
-        // Step 3: No local station, use IDW interpolation from nearby stations
-        else {
-          const maxReading = Math.max(...readings.map(r => r.value));
-
-          if (maxReading > 0) {
-            // Real-time calculation for the area using IDW
-            let totalRainfall = 0;
-            const samplePoints = 25;
-            for (let i = 0; i < samplePoints; i++) {
-              const x = (Math.random() - 0.5) * width;
-              const z = (Math.random() - 0.5) * height;
-              totalRainfall += getRainfallAt(x, z);
-            }
-            avgRainfall = totalRainfall / samplePoints;
-            console.log(`Rainfall for ${planningAreaId}: ${avgRainfall.toFixed(2)} mm (IDW interpolation, max reading: ${maxReading}mm)`);
-          } else {
-            console.log(`Rainfall for ${planningAreaId}: 0.00 mm (no rain detected)`);
-          }
-        }
-      } else {
-        console.warn(`Planning area not found: ${planningAreaId}`);
-      }
-    }
+    const { width, height, textureWidth, textureHeight, isNonTransparent } = mapBounds;
 
     // If no rainfall, don't create any particles
-    // Use low threshold (0.05mm) to show even very light drizzle
-    // This matches the actual calculated rainfall for this specific area
-    if (avgRainfall < 0.05) {
+    // Use very low threshold (0.01mm) to show even trace amounts
+    if (avgRainfall < 0.01) {
       return {
         positions: new Float32Array(0),
         colors: new Float32Array(0),
@@ -131,16 +41,25 @@ export function RainfallParticles({ planningAreaId }: Props) {
     }
 
     // Adjust particle count based on rainfall intensity
-    // Light rain: fewer particles, Heavy rain: many particles
+    // Singapore rainfall scale (mm/hour):
+    // 0.1-1mm: Very light drizzle
+    // 1-5mm: Light rain
+    // 5-10mm: Moderate rain
+    // 10-20mm: Heavy rain
+    // 20+mm: Very heavy/torrential rain
     let particleMultiplier = 1;
-    if (avgRainfall < 2) {
-      particleMultiplier = 0.5; // Light rain
-    } else if (avgRainfall < 5) {
-      particleMultiplier = 1; // Moderate
-    } else if (avgRainfall < 10) {
-      particleMultiplier = 2; // Heavy
+    if (avgRainfall < 0.5) {
+      particleMultiplier = 0.3; // Very light drizzle (100-600 particles)
+    } else if (avgRainfall < 1) {
+      particleMultiplier = 0.5; // Light drizzle (1000 particles)
+    } else if (avgRainfall < 3) {
+      particleMultiplier = 1; // Light rain (2000 particles)
+    } else if (avgRainfall < 8) {
+      particleMultiplier = 2; // Moderate rain (4000 particles)
+    } else if (avgRainfall < 15) {
+      particleMultiplier = 3; // Heavy rain (6000 particles)
     } else {
-      particleMultiplier = 3; // Very heavy
+      particleMultiplier = 4; // Very heavy/torrential (8000 particles)
     }
 
     const baseParticles = 2000;
@@ -152,20 +71,28 @@ export function RainfallParticles({ planningAreaId }: Props) {
     const tempVelocities: number[] = [];
     const tempInitialPositions: number[] = [];
 
-    // Color based on rainfall intensity - matching 2D layer
+    // Color based on rainfall intensity
+    // For very light rain (< 0.5mm), use more visible bright cyan/white
+    // to make drizzle stand out against the map background
     let r, g, b;
-    if (avgRainfall === 0) {
-      r = 0xe0 / 255; g = 0xe0 / 255; b = 0xe0 / 255; // Gray
+    if (avgRainfall < 0.5) {
+      // Very light drizzle - bright cyan/white for high visibility
+      r = 0xd0 / 255; g = 0xf5 / 255; b = 0xff / 255;
     } else if (avgRainfall < 2) {
-      r = 0xba / 255; g = 0xe6 / 255; b = 0xfd / 255; // Light blue
+      // Light rain - light blue
+      r = 0xba / 255; g = 0xe6 / 255; b = 0xfd / 255;
     } else if (avgRainfall < 5) {
-      r = 0x7d / 255; g = 0xd3 / 255; b = 0xfc / 255; // Medium blue
+      // Moderate rain - medium blue
+      r = 0x7d / 255; g = 0xd3 / 255; b = 0xfc / 255;
     } else if (avgRainfall < 10) {
-      r = 0x38 / 255; g = 0xbd / 255; b = 0xf8 / 255; // Blue
+      // Heavy rain - blue
+      r = 0x38 / 255; g = 0xbd / 255; b = 0xf8 / 255;
     } else if (avgRainfall < 20) {
-      r = 0x0e / 255; g = 0xa5 / 255; b = 0xe9 / 255; // Deep blue
+      // Very heavy rain - deep blue
+      r = 0x0e / 255; g = 0xa5 / 255; b = 0xe9 / 255;
     } else {
-      r = 0x03 / 255; g = 0x69 / 255; b = 0xa1 / 255; // Dark blue
+      // Torrential rain - dark blue
+      r = 0x03 / 255; g = 0x69 / 255; b = 0xa1 / 255;
     }
 
     // Fall speed based on intensity (mm/hour to realistic fall speed)
@@ -226,7 +153,7 @@ export function RainfallParticles({ planningAreaId }: Props) {
     console.log(`Raindrop color: RGB(${(r * 255).toFixed(0)}, ${(g * 255).toFixed(0)}, ${(b * 255).toFixed(0)})`);
 
     return { positions, colors, velocities, initialPositions };
-  }, [data, mapBounds, planningAreaId]);
+  }, [avgRainfall, mapBounds]);
 
   // Animate rain falling
   useFrame((state, delta) => {
@@ -275,7 +202,7 @@ export function RainfallParticles({ planningAreaId }: Props) {
         positions[i * 6 + 2] = newZ;
 
         // Bottom vertex (offset by drop length)
-        const dropLength = 3 + (data?.rainfall?.readings?.[0]?.value || 0) * 0.5;
+        const dropLength = 3 + avgRainfall * 0.5;
         positions[i * 6 + 3] = newX;
         positions[i * 6 + 4] = newY - dropLength;
         positions[i * 6 + 5] = newZ;
