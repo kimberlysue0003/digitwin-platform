@@ -1,0 +1,25 @@
+{
+  "planningArea": "tuas",
+  "id": "tuas",
+  "buildingCount": 0,
+  "buildings": [],
+  "metadata": {
+    "bounds": [
+      [
+        1.1938184863012995,
+        103.54880332946777
+      ],
+      [
+        1.3695556885638807,
+        103.72458457946779
+      ]
+    ],
+    "center": [
+      1.28168708743259,
+      103.63669395446777
+    ],
+    "source": "OpenStreetMap Overpass API",
+    "fetchedAt": "2025-10-06T03:47:57.439Z",
+    "note": "Coordinates aligned with map texture bounds"
+  }
+}

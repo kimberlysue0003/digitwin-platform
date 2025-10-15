@@ -36,7 +36,12 @@ export function GroundMapLayer({ planningAreaId }: Props) {
         };
 
         setMetadata(transformedData);
-        setTextureUrl(`${API_CONFIG.BASE_URL}${data.png_file_path}`);
+
+        // Normalize png_file_path to a valid web URL
+        const rawPath = String(data.png_file_path || '').replace(/\\/g, '/');
+        const pathWithLeadingSlash = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+        const base = API_CONFIG.BASE_URL.replace(/\/$/, '');
+        setTextureUrl(`${base}${pathWithLeadingSlash}`);
       } catch (error) {
         console.error('Failed to load map texture metadata:', error);
       }

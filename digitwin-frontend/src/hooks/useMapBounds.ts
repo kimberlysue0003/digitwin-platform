@@ -71,7 +71,12 @@ export function useMapBounds(planningAreaId: string): MapBounds {
           setTextureHeight(canvas.height);
         };
         img.onerror = () => console.error('Failed to load map texture');
-        img.src = `${API_CONFIG.BASE_URL}${data.png_file_path}`;
+
+        // Normalize png_file_path to valid URL
+        const rawPath = String(data.png_file_path || '').replace(/\\/g, '/');
+        const pathWithLeadingSlash = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+        const base = API_CONFIG.BASE_URL.replace(/\/$/, '');
+        img.src = `${base}${pathWithLeadingSlash}`;
       } catch (error) {
         console.error('Failed to load map data:', error);
       }
