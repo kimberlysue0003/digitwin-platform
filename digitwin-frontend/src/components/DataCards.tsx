@@ -231,7 +231,7 @@ export function DataCards() {
         return null;
       })()
     : data.rainfall?.readings
-    ? data.rainfall.readings.reduce((sum, r) => sum + r.value, 0)
+    ? (data.rainfall.readings.reduce((sum, r) => sum + r.value, 0) / data.rainfall.readings.length)
     : null;
 
   const locationLabel = viewMode === '3d'
