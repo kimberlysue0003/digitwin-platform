@@ -3,21 +3,22 @@ frontend:
   phases:
     preBuild:
       commands:
-        # Install dependencies in the frontend directory
-        - cd digitwin-frontend && npm ci
+        # Clear node_modules to avoid cache issues
+        - rm -rf digitwin-frontend/node_modules
+        # Enter frontend directory
+        - cd digitwin-frontend
+        # Install dependencies
+        - npm ci
         # Generate production env file from Amplify environment variables
-        - cd digitwin-frontend && printf "VITE_API_URL=%s\n" "$VITE_API_URL" > .env.production
-        - cd digitwin-frontend && printf "VITE_WS_URL=%s\n" "$VITE_WS_URL" >> .env.production
-        - cd digitwin-frontend && echo "VITE_BUILDINGS_FALLBACK=0" >> .env.production
+        - printf "VITE_API_URL=%s\n" "$VITE_API_URL" > .env.production
+        - printf "VITE_WS_URL=%s\n" "$VITE_WS_URL" >> .env.production
+        - echo "VITE_BUILDINGS_FALLBACK=0" >> .env.production
     build:
       commands:
         - export CI=false
-        # Build the frontend app from the digitwin-frontend directory
-        - cd digitwin-frontend && npm run build
+        # Build the frontend app
+        - npm run build
   artifacts:
     baseDirectory: digitwin-frontend/dist
     files:
       - '**/*'
-  cache:
-    paths:
-      - digitwin-frontend/node_modules/**/*
