@@ -1,0 +1,116 @@
+name: Import Database Data
+
+on:
+  workflow_dispatch:
+    inputs:
+      import_type:
+        description: 'What to import'
+        required: true
+        type: choice
+        options:
+          - all
+          - areas
+          - buildings
+          - streamlines
+          - map_textures
+
+jobs:
+  import:
+    name: Import Data to Database
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Build import scripts
+        run: |
+          cd digitwin-backend-go
+
+          # Build all import scripts
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o import-areas scripts/import/areas.go
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o import-buildings scripts/import/buildings.go
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o import-streamlines scripts/import/streamlines.go
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o import-map-textures scripts/import/map_textures.go
+
+          # Package everything
+          tar czf import-bundle.tar.gz import-* data/
+
+      - name: Upload to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "digitwin-backend-go/import-bundle.tar.gz"
+          target: "/home/ubuntu/"
+
+      - name: Run import on EC2
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+
+            cd ~
+            mkdir -p digitwin-import
+            tar xzf digitwin-backend-go/import-bundle.tar.gz -C digitwin-import/
+            cd digitwin-import
+
+            # Set environment variables
+            export DB_HOST=${{ secrets.DB_HOST }}
+            export DB_PORT=${{ secrets.DB_PORT }}
+            export DB_USER=${{ secrets.DB_USER }}
+            export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            export DB_NAME=${{ secrets.DB_NAME }}
+            export DB_SSLMODE=require
+
+            # Run import based on selection
+            case "${{ github.event.inputs.import_type }}" in
+              "all")
+                echo "Importing all data..."
+                IMPORT_FILE=./data/areas.json ./import-areas
+                IMPORT_FILE=./data/buildings.json ./import-buildings
+                IMPORT_FILE=./data/streamlines.json ./import-streamlines
+                IMPORT_FILE=./data/map_textures.json ./import-map-textures
+                ;;
+              "areas")
+                echo "Importing areas..."
+                IMPORT_FILE=./data/areas.json ./import-areas
+                ;;
+              "buildings")
+                echo "Importing buildings..."
+                IMPORT_FILE=./data/buildings.json ./import-buildings
+                ;;
+              "streamlines")
+                echo "Importing streamlines..."
+                IMPORT_FILE=./data/streamlines.json ./import-streamlines
+                ;;
+              "map_textures")
+                echo "Importing map textures..."
+                IMPORT_FILE=./data/map_textures.json ./import-map-textures
+                ;;
+            esac
+
+            # Cleanup
+            cd ~
+            rm -rf digitwin-import
+            rm -f digitwin-backend-go/import-bundle.tar.gz
+
+            echo "✓ Import completed successfully!"
+
+      - name: Import Summary
+        if: success()
+        run: |
+          echo "### ✅ Data Import Successful!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Import Type**: ${{ github.event.inputs.import_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Database**: ${{ secrets.DB_HOST }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Completed at**: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY

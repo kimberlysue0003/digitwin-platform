@@ -15,7 +15,7 @@
 go.work
 
 # Compiled binary
-server
+/server
 bin/
 tmp/
 

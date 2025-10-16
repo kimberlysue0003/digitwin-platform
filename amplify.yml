@@ -7,6 +7,7 @@ frontend:
         - npm ci
     build:
       commands:
+        - export CI=false
         - npm run build
   artifacts:
     baseDirectory: digitwin-frontend/dist

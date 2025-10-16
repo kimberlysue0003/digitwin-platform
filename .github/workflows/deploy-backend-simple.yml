@@ -13,7 +13,30 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy via SSH
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Build binary
+        run: |
+          cd digitwin-backend-go
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o server ./cmd/server/main.go
+          tar czf deploy.tar.gz server static/
+
+      - name: Deploy to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "digitwin-backend-go/deploy.tar.gz"
+          target: "/home/ubuntu/"
+
+      - name: Run on EC2
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -26,49 +49,36 @@ jobs:
             echo "Starting deployment..."
             echo "=========================================="
 
-            # Navigate to project directory
-            cd ~/digitwin-platform || {
-              echo "Project directory not found, cloning..."
-              cd ~
-              git clone https://github.com/kimberlysue0003/digitwin-platform.git
-              cd digitwin-platform
-            }
-
-            # Pull latest code
-            echo "Pulling latest code..."
-            git fetch origin main
-            git reset --hard origin/main
-
+            cd ~
+            mkdir -p digitwin-backend-go
+            tar xzf digitwin-backend-go/deploy.tar.gz -C digitwin-backend-go/
             cd digitwin-backend-go
 
-            # Build new Docker image
-            echo "Building Docker image..."
-            docker build -t digitwin-backend-go:latest .
-
-            # Stop and remove old container
-            echo "Stopping old container..."
-            docker stop digitwin-backend-go || true
-            docker rm digitwin-backend-go || true
+            # Stop and remove old containers
+            echo "Cleaning up old containers..."
+            docker stop digitwin-backend-go digitwin-redis || true
+            docker rm digitwin-backend-go digitwin-redis || true
 
             # Create network if not exists
             docker network create digitwin-net || true
 
-            # Start Redis if not running
-            if ! docker ps | grep -q digitwin-redis; then
-              echo "Starting Redis..."
-              docker run -d \
-                --name digitwin-redis \
-                --network digitwin-net \
-                --restart unless-stopped \
-                redis:7-alpine
-            fi
+            # Start Redis
+            echo "Starting Redis..."
+            docker run -d \
+              --name digitwin-redis \
+              --network digitwin-net \
+              --restart unless-stopped \
+              redis:7-alpine
 
-            # Run new container
+            # Run new container with precompiled binary
             echo "Starting new container..."
             docker run -d \
               --name digitwin-backend-go \
               --network digitwin-net \
               -p 3000:3000 \
+              -v ~/digitwin-backend-go/server:/app/server \
+              -v ~/digitwin-backend-go/static:/app/static \
+              -w /app \
               -e DB_HOST=${{ secrets.DB_HOST }} \
               -e DB_PORT=${{ secrets.DB_PORT }} \
               -e DB_USER=${{ secrets.DB_USER }} \
@@ -78,8 +88,10 @@ jobs:
               -e REDIS_HOST=digitwin-redis \
               -e REDIS_PORT=6379 \
               -e PORT=3000 \
+              -e TZ=Asia/Singapore \
               --restart unless-stopped \
-              digitwin-backend-go:latest
+              alpine:latest \
+              /app/server
 
             # Wait for health check
             echo "Waiting for backend to be healthy..."
