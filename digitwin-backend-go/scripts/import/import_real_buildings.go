@@ -2,19 +2,17 @@
 package main
 
 import (
-	"context"
-	"digitwin-backend/internal/config"
-	"digitwin-backend/internal/database"
-	"digitwin-backend/internal/models"
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"log"
-	"os"
-	"path/filepath"
-	"time"
+    "digitwin-backend/internal/config"
+    "digitwin-backend/internal/database"
+    "digitwin-backend/internal/models"
+    "encoding/json"
+    "io/ioutil"
+    "log"
+    "os"
+    "path/filepath"
+    "time"
 
-	"gorm.io/gorm"
+    "gorm.io/gorm"
 )
 
 // BuildingJSON represents the JSON structure from frontend
@@ -121,25 +119,21 @@ func main() {
 		buildings := make([]models.Building, 0, batchSize)
 
 		for i, b := range buildingData.Buildings {
-			// Convert footprint to JSON format
-			footprint := make([]map[string]float64, len(b.Footprint))
-			for j, point := range b.Footprint {
-				footprint[j] = map[string]float64{
-					"x": point[0],
-					"z": point[1],
-				}
-			}
+        // Convert footprint to models.Footprint
+        fp := make(models.Footprint, len(b.Footprint))
+        for j, point := range b.Footprint {
+            fp[j] = models.Point2D{X: point[0], Z: point[1]}
+        }
 
-			footprintJSON, _ := json.Marshal(footprint)
-
-			building := models.Building{
-				PlanningAreaID: buildingData.ID,
-				Footprint:      footprintJSON,
-				Height:         b.Height,
-				BuildingType:   "building",
-				Source:         "OpenStreetMap",
-				FetchedAt:      time.Now(),
-			}
+        bt := "building"
+        building := models.Building{
+            PlanningAreaID: buildingData.ID,
+            Footprint:      fp,
+            Height:         b.Height,
+            BuildingType:   &bt,
+            Source:         "OpenStreetMap",
+            FetchedAt:      time.Now(),
+        }
 
 			buildings = append(buildings, building)
 
