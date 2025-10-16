@@ -27,6 +27,18 @@ jobs:
           CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o server ./cmd/server/main.go
           tar czf deploy.tar.gz server static/
 
+      - name: Package buildings artifact (optional)
+        run: |
+          if [ -d digitwin-frontend/public/buildings ]; then
+            echo "Found frontend public/buildings; packaging for import..."
+            tar czf digitwin-backend-go/buildings.tar.gz -C digitwin-frontend/public buildings
+          elif [ -d digitwin-frontend/dist/buildings ]; then
+            echo "Found frontend dist/buildings; packaging for import..."
+            tar czf digitwin-backend-go/buildings.tar.gz -C digitwin-frontend/dist buildings
+          else
+            echo "No buildings directory found; skipping buildings artifact."
+          fi
+
       - name: Deploy to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -34,6 +46,16 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           source: "digitwin-backend-go/deploy.tar.gz"
+          target: "/home/ubuntu/"
+
+      - name: Upload buildings artifact to EC2 (optional)
+        if: hashFiles('digitwin-backend-go/buildings.tar.gz') != ''
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "digitwin-backend-go/buildings.tar.gz"
           target: "/home/ubuntu/"
 
       - name: Run on EC2
@@ -70,6 +92,43 @@ jobs:
               --restart unless-stopped \
               redis:7-alpine
 
+            # Seed map_textures from static JSONs using Go container
+            echo "Seeding map textures into RDS..."
+            docker run --rm \
+              --network digitwin-net \
+              -v ~/digitwin-backend-go:/app \
+              -w /app \
+              -e DB_HOST=${{ secrets.DB_HOST }} \
+              -e DB_PORT=${{ secrets.DB_PORT }} \
+              -e DB_USER=${{ secrets.DB_USER }} \
+              -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
+              -e DB_NAME=${{ secrets.DB_NAME }} \
+              -e DB_SSLMODE=require \
+              golang:1.23 \
+              /usr/local/go/bin/go run scripts/import/map-textures.go || true
+
+            # Import real buildings if artifact exists
+            if [ -f ~/digitwin-backend-go/buildings.tar.gz ]; then
+              echo "Extracting and importing real buildings..."
+              mkdir -p buildings
+              tar xzf ~/digitwin-backend-go/buildings.tar.gz -C buildings/
+              docker run --rm \
+                --network digitwin-net \
+                -v ~/digitwin-backend-go:/app \
+                -v ~/digitwin-backend-go/buildings:/data \
+                -w /app \
+                -e DB_HOST=${{ secrets.DB_HOST }} \
+                -e DB_PORT=${{ secrets.DB_PORT }} \
+                -e DB_USER=${{ secrets.DB_USER }} \
+                -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
+                -e DB_NAME=${{ secrets.DB_NAME }} \
+                -e DB_SSLMODE=require \
+                golang:1.23 \
+                /usr/local/go/bin/go run scripts/import/import_real_buildings.go /data/buildings || true
+            else
+              echo "No buildings artifact provided; skipping buildings import."
+            fi
+
             # Run new container with precompiled binary
             echo "Starting new container..."
             docker run -d \
@@ -87,7 +146,7 @@ jobs:
               -e DB_SSLMODE=require \
               -e REDIS_HOST=digitwin-redis \
               -e REDIS_PORT=6379 \
-              -e PORT=3000 \
+              -e SERVER_PORT=3000 \
               -e TZ=Asia/Singapore \
               --restart unless-stopped \
               alpine:latest \
