@@ -126,6 +126,8 @@ export function BuildingsLayer() {
   const selectedAreaRef = useRef(selectedPlanningArea);
   const geometryWorkerSupported = typeof Worker !== 'undefined';
   const BUILDING_EFFECT_DELAY = 2600; // slightly longer than growth animation
+  // Control whether to fallback to public/buildings when API is empty/unavailable (disabled by default)
+  const ENABLE_BUILDINGS_FALLBACK = (import.meta as any).env?.VITE_BUILDINGS_FALLBACK === '1';
   const clearEffectsTimeout = () => {
     if (effectsTimeoutRef.current !== null) {
       clearTimeout(effectsTimeoutRef.current);
@@ -280,10 +282,14 @@ export function BuildingsLayer() {
         // First, get chunk info
         const infoResponse = await fetch(`${buildApiUrl("/api/buildings")}/${selectedPlanningArea}/chunks/info`);
         if (!infoResponse.ok) {
-          console.warn(`No building data found for ${selectedPlanningArea} via API, trying public fallback...`);
-          const fallback = await loadFromPublic(selectedPlanningArea);
-          if (fallback && fallback.length > 0) {
-            setBuildings(fallback);
+          console.warn(`No building data found for ${selectedPlanningArea} via API`);
+          if (ENABLE_BUILDINGS_FALLBACK) {
+            const fallback = await loadFromPublic(selectedPlanningArea);
+            if (fallback && fallback.length > 0) {
+              setBuildings(fallback);
+            } else {
+              setBuildings([]);
+            }
           } else {
             setBuildings([]);
           }
@@ -335,9 +341,13 @@ export function BuildingsLayer() {
 
         // If API returned empty, try public fallback (local dev)
         if (allBuildings.length === 0) {
-          const fallback = await loadFromPublic(selectedPlanningArea);
-          if (fallback && fallback.length > 0) {
-            setBuildings(fallback);
+          if (ENABLE_BUILDINGS_FALLBACK) {
+            const fallback = await loadFromPublic(selectedPlanningArea);
+            if (fallback && fallback.length > 0) {
+              setBuildings(fallback);
+            } else {
+              setBuildings([]);
+            }
           } else {
             setBuildings([]);
           }
@@ -347,10 +357,14 @@ export function BuildingsLayer() {
         }
       } catch (error) {
         console.error(`Failed to load buildings for ${selectedPlanningArea}:`, error);
-        // On error, try public fallback
-        const fallback = await loadFromPublic(selectedPlanningArea);
-        if (fallback && fallback.length > 0) {
-          setBuildings(fallback);
+        // On error, fallback only if enabled
+        if (ENABLE_BUILDINGS_FALLBACK) {
+          const fallback = await loadFromPublic(selectedPlanningArea);
+          if (fallback && fallback.length > 0) {
+            setBuildings(fallback);
+          } else {
+            setBuildings([]);
+          }
         } else {
           setBuildings([]);
         }

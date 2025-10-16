@@ -5,8 +5,13 @@ frontend:
       commands:
         - cd digitwin-frontend
         - npm ci
+        # Generate production env file from Amplify environment variables (set these in Amplify console)
+        - echo "VITE_API_URL=${VITE_API_URL}" > .env.production
+        - echo "VITE_WS_URL=${VITE_WS_URL}" >> .env.production
+        - echo "VITE_BUILDINGS_FALLBACK=0" >> .env.production
     build:
       commands:
+        - cd digitwin-frontend
         - export CI=false
         - npm run build
   artifacts:
