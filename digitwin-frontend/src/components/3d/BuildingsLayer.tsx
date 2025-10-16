@@ -158,54 +158,76 @@ export function BuildingsLayer() {
       pendingRequestsRef.current.delete(requestId);
       const { cacheKey, buildings: originalBuildings } = pending;
 
-      const prepared: PreparedBuilding[] = results.map((result, index) => {
-        const geometry = new THREE.BufferGeometry();
-        if (result.positions.length > 0) {
-          geometry.setAttribute(
-            'position',
-            new THREE.BufferAttribute(result.positions, 3)
-          );
+      const total = results.length || 0;
+      const prepared: PreparedBuilding[] = [];
+      const batchSize = 200;
+
+      const processBatch = (startIndex: number) => {
+        const end = Math.min(startIndex + batchSize, total);
+        for (let index = startIndex; index < end; index++) {
+          const result = results[index];
+          const geometry = new THREE.BufferGeometry();
+          if (result.positions.length > 0) {
+            geometry.setAttribute(
+              'position',
+              new THREE.BufferAttribute(result.positions, 3)
+            );
+          }
+          if (result.normals.length > 0) {
+            geometry.setAttribute(
+              'normal',
+              new THREE.BufferAttribute(result.normals, 3)
+            );
+          } else {
+            geometry.computeVertexNormals();
+          }
+          if (result.uvs && result.uvs.length > 0) {
+            geometry.setAttribute('uv', new THREE.BufferAttribute(result.uvs, 2));
+          }
+          if (result.indices && result.indices.length > 0) {
+            geometry.setIndex(new THREE.BufferAttribute(result.indices, 1));
+          }
+          geometry.computeBoundingBox();
+          geometry.computeBoundingSphere();
+
+          const buildingData = originalBuildings[index] ?? { height: 0 };
+          const material = calculateMaterialProps(buildingData.height, index);
+
+          prepared.push({
+            geometry,
+            position: [0, 0.5, 0],
+            rotation: [-Math.PI / 2, 0, 0],
+            material,
+          });
         }
-        if (result.normals.length > 0) {
-          geometry.setAttribute(
-            'normal',
-            new THREE.BufferAttribute(result.normals, 3)
-          );
+
+        // Update progress smoothly from 15% -> 100%
+        const progress = total > 0 ? 15 + Math.floor(((end) / total) * 85) : 100;
+        if (progress > progressRef.current) {
+          progressRef.current = progress;
+          setGeometryProgress(progress);
+        }
+
+        if (end < total) {
+          // Yield to the browser to render progress
+          setTimeout(() => processBatch(end), 0);
         } else {
-          geometry.computeVertexNormals();
+          // Completed
+          geometryCacheRef.current[cacheKey] = prepared;
+          const [areaId] = cacheKey.split(':');
+          if (areaId === selectedAreaRef.current) {
+            setPreparedBuildings(prepared.map((item) => ({ ...item })));
+            setReadyToDisplay(true);
+            setGeometryProgress(100);
+            clearEffectsTimeout();
+            effectsReadyRef.current = true;
+            setEffectsReady(true);
+          }
         }
-        if (result.uvs && result.uvs.length > 0) {
-          geometry.setAttribute('uv', new THREE.BufferAttribute(result.uvs, 2));
-        }
-        if (result.indices && result.indices.length > 0) {
-          geometry.setIndex(new THREE.BufferAttribute(result.indices, 1));
-        }
-        geometry.computeBoundingBox();
-        geometry.computeBoundingSphere();
+      };
 
-        const buildingData = originalBuildings[index] ?? { height: 0 };
-        const material = calculateMaterialProps(buildingData.height, index);
-
-        return {
-          geometry,
-          position: [0, 0.5, 0],
-          rotation: [-Math.PI / 2, 0, 0],
-          material,
-        };
-      });
-
-      geometryCacheRef.current[cacheKey] = prepared;
-
-      const [areaId] = cacheKey.split(':');
-      if (areaId === selectedAreaRef.current) {
-        setPreparedBuildings(prepared.map((item) => ({ ...item })));
-        setGeometryProgress(100);
-        setReadyToDisplay(true);
-        setGeometryProgress(100);
-        clearEffectsTimeout();
-        effectsReadyRef.current = true;
-        setEffectsReady(true);
-      }
+      // Start progressive processing on main thread
+      processBatch(0);
     };
 
     worker.onerror = (event) => {
@@ -232,6 +254,24 @@ export function BuildingsLayer() {
     progressRef.current = 0;
     setGeometryProgress(0);
 
+    // Helper: load buildings from public fallback JSON (for local dev)
+    const loadFromPublic = async (areaId: string): Promise<Building[] | null> => {
+      try {
+        const url = `/buildings/${areaId}.json`;
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        const json: BuildingData = await res.json();
+        if (!json || !json.buildings) return null;
+        const transformed: Building[] = json.buildings.map((b: any) => ({
+          footprint: (b.footprint || []).map((p: any) => [p[0] ?? p.x, p[1] ?? p.z] as [number, number]),
+          height: b.height ?? 0,
+        }));
+        return transformed;
+      } catch {
+        return null;
+      }
+    };
+
     // Load building data from backend API
     const loadBuildings = async () => {
       try {
@@ -240,8 +280,13 @@ export function BuildingsLayer() {
         // First, get chunk info
         const infoResponse = await fetch(`${buildApiUrl("/api/buildings")}/${selectedPlanningArea}/chunks/info`);
         if (!infoResponse.ok) {
-          console.warn(`No building data found for ${selectedPlanningArea}`);
-          setBuildings([]);
+          console.warn(`No building data found for ${selectedPlanningArea} via API, trying public fallback...`);
+          const fallback = await loadFromPublic(selectedPlanningArea);
+          if (fallback && fallback.length > 0) {
+            setBuildings(fallback);
+          } else {
+            setBuildings([]);
+          }
           setLoading(false);
           return;
         }
@@ -288,11 +333,27 @@ export function BuildingsLayer() {
         const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
         console.log(`✅ Loaded ${allBuildings.length} buildings from API in ${totalTime}s`);
 
-        // Update buildings ONLY ONCE - no flickering!
-        setBuildings(allBuildings);
+        // If API returned empty, try public fallback (local dev)
+        if (allBuildings.length === 0) {
+          const fallback = await loadFromPublic(selectedPlanningArea);
+          if (fallback && fallback.length > 0) {
+            setBuildings(fallback);
+          } else {
+            setBuildings([]);
+          }
+        } else {
+          // Update buildings ONLY ONCE - no flickering!
+          setBuildings(allBuildings);
+        }
       } catch (error) {
         console.error(`Failed to load buildings for ${selectedPlanningArea}:`, error);
-        setBuildings([]);
+        // On error, try public fallback
+        const fallback = await loadFromPublic(selectedPlanningArea);
+        if (fallback && fallback.length > 0) {
+          setBuildings(fallback);
+        } else {
+          setBuildings([]);
+        }
       } finally {
         setLoading(false);
       }
