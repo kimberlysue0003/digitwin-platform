@@ -62,7 +62,20 @@ const generateGeometry = (building: WorkerBuildingInput): WorkerBuildingOutput |
     },
   );
 
-  const bufferGeometry = geometry.toNonIndexed();
+  // Only convert to non-indexed geometry when there is an index.
+  // ExtrudeGeometry can already be non-indexed; calling toNonIndexed() again
+  // produces noisy warnings in the console.
+  let bufferGeometry: THREE.BufferGeometry;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const hasIndex = (geometry as any).getIndex && (geometry as any).getIndex() !== null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const canToNonIndexed = (geometry as any).toNonIndexed !== undefined;
+  if (hasIndex && canToNonIndexed) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    bufferGeometry = (geometry as any).toNonIndexed();
+  } else {
+    bufferGeometry = (geometry as unknown as THREE.BufferGeometry);
+  }
   bufferGeometry.computeVertexNormals();
 
   const positionAttr = bufferGeometry.getAttribute('position');

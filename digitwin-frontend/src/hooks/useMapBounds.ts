@@ -72,8 +72,15 @@ export function useMapBounds(planningAreaId: string): MapBounds {
         };
         img.onerror = () => console.error('Failed to load map texture');
 
+        // Use backend path when present; otherwise fallback to computed path
+        let pngPath = String(data?.png_file_path ?? '').trim();
+        if (!pngPath || pngPath === '/') {
+          pngPath = `/static/map-textures/${planningAreaId}.png`;
+          console.warn(`Map texture missing png_file_path; using fallback ${pngPath}`);
+        }
+
         // Normalize png_file_path to valid URL
-        const rawPath = String(data.png_file_path || '').replace(/\\/g, '/');
+        const rawPath = pngPath.replace(/\\/g, '/');
         const pathWithLeadingSlash = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
         const base = API_CONFIG.BASE_URL.replace(/\/$/, '');
         img.src = `${base}${pathWithLeadingSlash}`;

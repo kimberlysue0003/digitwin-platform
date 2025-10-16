@@ -37,8 +37,15 @@ export function GroundMapLayer({ planningAreaId }: Props) {
 
         setMetadata(transformedData);
 
+        // Choose png path: backend value or computed fallback
+        let pngPath = String(data?.png_file_path ?? '').trim();
+        if (!pngPath || pngPath === '/') {
+          pngPath = `/static/map-textures/${planningAreaId}.png`;
+          console.warn(`Map texture missing png_file_path; using fallback ${pngPath}`);
+        }
+
         // Normalize png_file_path to a valid web URL
-        const rawPath = String(data.png_file_path || '').replace(/\\/g, '/');
+        const rawPath = pngPath.replace(/\\/g, '/');
         const pathWithLeadingSlash = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
         const base = API_CONFIG.BASE_URL.replace(/\/$/, '');
         setTextureUrl(`${base}${pathWithLeadingSlash}`);
